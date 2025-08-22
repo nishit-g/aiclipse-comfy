@@ -1,0 +1,93 @@
+name: Build All Templates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: aiclipse
+
+jobs:
+  build-base:
+    runs-on: ubuntu-latest
+    outputs:
+      base-image: ${{ steps.base.outputs.image }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GHCR_TOKEN }}
+
+    - name: Build and push base image
+      id: base
+      uses: docker/build-push-action@v5
+      with:
+        context: ./base
+        platforms: linux/amd64
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-base:latest
+          ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-base:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  build-templates:
+    needs: build-base
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        template: [headshots, products, logos]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GHCR_TOKEN }}
+
+    - name: Build and push template
+      uses: docker/build-push-action@v5
+      with:
+        context: ./templates/${{ matrix.template }}
+        platforms: linux/amd64
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${{ matrix.template }}:latest
+          ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${{ matrix.template }}:${{ github.sha }}
+        build-args: |
+          BASE_IMAGE=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-base:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  summary:
+    needs: [build-base, build-templates]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Create deployment summary
+      run: |
+        echo "## 🚀 AiClipse Templates Built Successfully!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Available Images:" >> $GITHUB_STEP_SUMMARY
+        echo "- \`${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-base:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "- \`${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-headshots:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "- \`${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-products:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "- \`${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-logos:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🎯 Ready for RunPod deployment!" >> $GITHUB_STEP_SUMMARY
