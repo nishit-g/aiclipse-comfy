@@ -31,7 +31,7 @@ setup_build_config() {
     log "🔧 Setting up build configuration..."
 
     # Default configuration
-    export REGISTRY="${REGISTRY:-ghcr.io/yourusername}"
+    export REGISTRY="${REGISTRY:-ghcr.io/nishit-g}"
     export VERSION="${VERSION:-latest}"
     export DOCKER_BUILDKIT=1
     export BUILDX_NO_DEFAULT_ATTESTATIONS=1
