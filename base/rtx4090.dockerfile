@@ -1,4 +1,4 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=ghcr.io/nishit-g/aiclipse-base-common:latest
 FROM ${BASE_IMAGE}
 
 ENV GPU_TYPE="rtx4090"

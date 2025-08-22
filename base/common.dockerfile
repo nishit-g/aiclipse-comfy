@@ -1,4 +1,4 @@
-ARG CUDA_VERSION=12.8
+ARG CUDA_VERSION=12.4.1
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
