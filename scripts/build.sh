@@ -13,58 +13,58 @@ echo "🎯 Target: $TARGET"
 case $TARGET in
     "base-common")
         echo "🔨 Building base common image..."
-        docker buildx bake base-common
+        docker buildx bake base-common --load
         ;;
     "base-rtx4090")
         echo "🔨 Building RTX 4090 base image..."
-        docker buildx bake base-rtx4090
+        docker buildx bake base-rtx4090 --load
         ;;
     "base-rtx5090")
         echo "🔨 Building RTX 5090 base image..."
-        docker buildx bake base-rtx5090
+        docker buildx bake base-rtx5090 --load
         ;;
     "bases")
         echo "🔨 Building base images sequentially..."
         echo "1/3 Building base-common..."
-        docker buildx bake base-common
+        docker buildx bake base-common --load
         echo "2/3 Building base-rtx4090..."
-        docker buildx bake base-rtx4090
+        docker buildx bake base-rtx4090 --load
         echo "3/3 Building base-rtx5090..."
-        docker buildx bake base-rtx5090
+        docker buildx bake base-rtx5090 --load
         ;;
     "4090")
         echo "🔨 Building RTX 4090 stack..."
         echo "1/2 Building base-rtx4090..."
-        docker buildx bake base-rtx4090
+        docker buildx bake base-rtx4090 --load
         echo "2/2 Building sd15-basic-4090..."
-        docker buildx bake sd15-basic-4090
+        docker buildx bake sd15-basic-4090 --load
         ;;
     "5090")
         echo "🔨 Building RTX 5090 stack..."
         echo "1/2 Building base-rtx5090..."
-        docker buildx bake base-rtx5090
+        docker buildx bake base-rtx5090 --load
         echo "2/2 Building sd15-basic-5090..."
-        docker buildx bake sd15-basic-5090
+        docker buildx bake sd15-basic-5090 --load
         ;;
     "sd15-basic")
         echo "🔨 Building SD 1.5 basic templates..."
         echo "1/2 Building sd15-basic-4090..."
-        docker buildx bake sd15-basic-4090
+        docker buildx bake sd15-basic-4090 --load
         echo "2/2 Building sd15-basic-5090..."
-        docker buildx bake sd15-basic-5090
+        docker buildx bake sd15-basic-5090 --load
         ;;
     "all")
         echo "🔨 Building everything sequentially..."
         echo "1/5 Building base-common..."
-        docker buildx bake base-common
+        docker buildx bake base-common --load
         echo "2/5 Building base-rtx4090..."
-        docker buildx bake base-rtx4090
+        docker buildx bake base-rtx4090 --load
         echo "3/5 Building base-rtx5090..."
-        docker buildx bake base-rtx5090
+        docker buildx bake base-rtx5090 --load
         echo "4/5 Building sd15-basic-4090..."
-        docker buildx bake sd15-basic-4090
+        docker buildx bake sd15-basic-4090 --load
         echo "5/5 Building sd15-basic-5090..."
-        docker buildx bake sd15-basic-5090
+        docker buildx bake sd15-basic-5090 --load
         ;;
     *)
         echo "❌ Unknown target: $TARGET"
