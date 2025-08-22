@@ -49,11 +49,8 @@ target "base-rtx5090" {
 
 # SD 1.5 Basic Template builds
 target "sd15-basic-4090" {
-    dockerfile = "templates/sd15-basic/Dockerfile"
+    dockerfile = "Dockerfile"
     context = "templates/sd15-basic"
-    contexts = {
-        base = "."
-    }
     args = {
         BASE_IMAGE = "${REGISTRY}/aiclipse-base-rtx4090:${VERSION}"
     }
@@ -63,11 +60,8 @@ target "sd15-basic-4090" {
 }
 
 target "sd15-basic-5090" {
-    dockerfile = "templates/sd15-basic/Dockerfile"
+    dockerfile = "Dockerfile"
     context = "templates/sd15-basic"
-    contexts = {
-        base = "."
-    }
     args = {
         BASE_IMAGE = "${REGISTRY}/aiclipse-base-rtx5090:${VERSION}"
     }
@@ -77,6 +71,10 @@ target "sd15-basic-5090" {
 }
 
 # Build groups
+group "default" {
+    targets = ["base-common"]
+}
+
 group "bases" {
     targets = ["base-common", "base-rtx4090", "base-rtx5090"]
 }

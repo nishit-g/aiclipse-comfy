@@ -35,7 +35,12 @@ validate_manifests() {
         log "Checking $manifest..."
 
         # Use Python script to validate
-        if ! /venv/bin/python base/scripts/download_models.py --manifest "$manifest" --models-dir /tmp/validate --validate-only 2>/dev/null; then
+        local python_cmd="python3"
+        if [ -f "/venv/bin/python" ]; then
+            python_cmd="/venv/bin/python"
+        fi
+
+        if ! $python_cmd base/scripts/download_models.py --manifest "$manifest" --models-dir /tmp/validate --validate-only 2>/dev/null; then
             error "❌ Invalid manifest: $manifest"
             ((errors++))
         else
