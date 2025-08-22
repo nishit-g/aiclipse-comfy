@@ -1,4 +1,5 @@
-FROM aiclipse/comfy-base:latest
+ARG BASE_IMAGE=ghcr.io/nishit-g/aiclipse-base:latest
+FROM ${BASE_IMAGE}
 
 ENV TEMPLATE_TYPE=headshots
 ENV DOWNLOAD_MODELS=true
