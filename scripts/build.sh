@@ -33,7 +33,7 @@ case $TARGET in
         ;;
     *)
         echo "❌ Unknown target: $TARGET"
-        echo "Usage: $0 [bases|headshots|4090|5090|all]"
+        echo "Usage: $0 [bases|sd15-basic|4090|5090|all]"
         exit 1
         ;;
 esac
