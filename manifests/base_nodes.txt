@@ -1,0 +1,12 @@
+# AiClipse Base Custom Nodes Manifest
+# Format: repo_url|branch|category|description
+# These nodes are installed in all templates
+
+# Essential UI and Workflow Tools
+https://github.com/rgthree/rgthree-comfy|main|ui|Essential UI improvements and workflow tools
+https://github.com/pythongosssss/ComfyUI-Custom-Scripts|main|scripts|Custom script collection for better UX
+
+# Core Utility Nodes
+https://github.com/WASasquatch/was-node-suite-comfyui|main|utility|WAS node suite for image processing
+https://github.com/jags111/efficiency-nodes-comfyui|main|efficiency|Efficiency nodes for optimized workflows
+https://github.com/kijai/ComfyUI-KJNodes|main|utility|KJ utility nodes collection

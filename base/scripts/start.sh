@@ -16,6 +16,7 @@ source /scripts/setup_symlinks.sh
 source /scripts/setup_sync.sh
 source /scripts/setup_models.sh
 source /scripts/setup_services.sh
+source /scripts/setup_nodes.sh
 
 # Main startup sequence
 main() {
@@ -36,6 +37,9 @@ main() {
 
     log "🎯 Configuring model paths..."
     setup_model_paths
+
+    log "🔌 Installing custom nodes..."
+    setup_custom_nodes
 
     log "📥 Starting model downloads..."
     download_models_async

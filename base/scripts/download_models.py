@@ -5,8 +5,10 @@ import sys
 from pathlib import Path
 from huggingface_hub import hf_hub_download, snapshot_download
 
+
 def log(message):
     print(f"[MODELS] {message}", flush=True)
+
 
 def download_from_manifest(manifest_file, models_dir, token=None):
     """Download models from manifest file"""
@@ -16,17 +18,17 @@ def download_from_manifest(manifest_file, models_dir, token=None):
     success_count = 0
     error_count = 0
 
-    with open(manifest_file, 'r', encoding='utf-8') as f:
+    with open(manifest_file, "r", encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
 
             # Skip comments and empty lines
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
 
             try:
                 # Parse manifest line: repo|filename|subdir
-                parts = line.split('|', 2)
+                parts = line.split("|", 2)
                 if len(parts) != 3:
                     log(f"Line {line_num}: Invalid format, skipping: {line}")
                     continue
@@ -43,7 +45,7 @@ def download_from_manifest(manifest_file, models_dir, token=None):
                     repo_id=repo_id,
                     filename=filename,
                     local_dir=target_dir,
-                    token=token
+                    token=token,
                 )
 
                 success_count += 1
@@ -56,11 +58,14 @@ def download_from_manifest(manifest_file, models_dir, token=None):
     log(f"Download complete: {success_count} success, {error_count} errors")
     return error_count == 0
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Download models from manifest')
-    parser.add_argument('--manifest', required=True, help='Manifest file path')
-    parser.add_argument('--models-dir', required=True, help='Models directory')
-    parser.add_argument('--token', default=os.getenv('HF_TOKEN'), help='Hugging Face token')
+    parser = argparse.ArgumentParser(description="Download models from manifest")
+    parser.add_argument("--manifest", required=True, help="Manifest file path")
+    parser.add_argument("--models-dir", required=True, help="Models directory")
+    parser.add_argument(
+        "--token", default=os.getenv("HF_TOKEN"), help="Hugging Face token"
+    )
 
     args = parser.parse_args()
 
@@ -75,5 +80,6 @@ def main():
         log(f"Download failed: {e}")
         return 1
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main())
