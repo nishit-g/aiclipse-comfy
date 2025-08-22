@@ -8,8 +8,8 @@ setup_custom_nodes() {
     local nodes_dir="$comfyui_dir/custom_nodes"
 
     # Create default manifest if none exists
-    if [ ! -f "$nodes_manifest" ] && [ -f "/manifests/headshots_nodes.txt" ]; then
-        cp "/manifests/headshots_nodes.txt" "$nodes_manifest"
+    if [ ! -f "$nodes_manifest" ] && [ -f "/manifests/base_nodes.txt" ]; then
+        cp "/manifests/base_nodes.txt" "$nodes_manifest"
         log "📋 Created default custom nodes manifest"
     fi
 
@@ -21,11 +21,20 @@ setup_custom_nodes() {
 
     log "📦 Installing custom nodes from manifest..."
 
-    # Process each line in manifest
-    while IFS='|' read -r repo_url branch category description || [ -n "$repo_url" ]; do
+    # Process each line in manifest - FIXED VERSION
+    while IFS= read -r line || [ -n "$line" ]; do
         # Skip comments and empty lines
-        [[ $repo_url =~ ^[[:space:]]*# ]] && continue
-        [[ -z "$repo_url" ]] && continue
+        [[ $line =~ ^[[:space:]]*# ]] && continue
+        [[ -z "$line" ]] && continue
+
+        # Parse the line - now properly handling the full line first
+        IFS='|' read -r repo_url branch category description <<< "$line"
+
+        # Validate required fields
+        if [[ -z "$repo_url" ]]; then
+            log "⚠️ Skipping line with empty repo URL: $line"
+            continue
+        fi
 
         local node_name=$(basename "$repo_url" .git)
         local node_path="$nodes_dir/$node_name"
@@ -36,26 +45,26 @@ setup_custom_nodes() {
             continue
         fi
 
-        log "🔧 Installing $node_name ($category)..."
+        log "🔧 Installing $node_name (${category:-general})..."
 
-        # Clone repository
+        # Clone repository with error handling
         if git clone --depth 1 -b "${branch:-main}" "$repo_url" "$node_path" 2>/dev/null; then
             cd "$node_path"
 
             # Install requirements if present
             if [ -f "requirements.txt" ]; then
                 log "📋 Installing requirements for $node_name..."
-                /venv/bin/pip install --no-cache-dir -r requirements.txt || {
+                if ! /venv/bin/pip install --no-cache-dir -r requirements.txt; then
                     log "⚠️ Failed to install requirements for $node_name"
-                }
+                fi
             fi
 
             # Run install script if present
             if [ -f "install.py" ]; then
                 log "🔧 Running install script for $node_name..."
-                /venv/bin/python install.py || {
+                if ! /venv/bin/python install.py; then
                     log "⚠️ Install script failed for $node_name"
-                }
+                fi
             fi
 
             log "✅ Installed $node_name"
@@ -94,6 +103,8 @@ def install_custom_nodes():
         return
 
     nodes_dir.mkdir(exist_ok=True)
+    success_count = 0
+    error_count = 0
 
     with open(nodes_manifest, 'r') as f:
         for line_num, line in enumerate(f, 1):
@@ -105,8 +116,9 @@ def install_custom_nodes():
 
             try:
                 parts = line.split('|')
-                if len(parts) < 2:
+                if len(parts) < 1 or not parts[0].strip():
                     log(f"Line {line_num}: Invalid format, skipping: {line}")
+                    error_count += 1
                     continue
 
                 repo_url = parts[0].strip()
@@ -135,25 +147,36 @@ def install_custom_nodes():
                     req_file = node_path / "requirements.txt"
                     if req_file.exists():
                         log(f"📋 Installing requirements for {repo_name}...")
-                        subprocess.run([
+                        req_result = subprocess.run([
                             "/venv/bin/pip", "install", "--no-cache-dir",
                             "-r", str(req_file)
-                        ], capture_output=True)
+                        ], capture_output=True, text=True)
+
+                        if req_result.returncode != 0:
+                            log(f"⚠️ Requirements installation failed for {repo_name}: {req_result.stderr}")
 
                     # Run install script
                     install_script = node_path / "install.py"
                     if install_script.exists():
                         log(f"🔧 Running install script for {repo_name}...")
-                        subprocess.run([
+                        install_result = subprocess.run([
                             "/venv/bin/python", str(install_script)
-                        ], cwd=str(node_path), capture_output=True)
+                        ], cwd=str(node_path), capture_output=True, text=True)
+
+                        if install_result.returncode != 0:
+                            log(f"⚠️ Install script failed for {repo_name}: {install_result.stderr}")
 
                     log(f"✅ Installed {repo_name}")
+                    success_count += 1
                 else:
                     log(f"❌ Failed to clone {repo_name}: {result.stderr}")
+                    error_count += 1
 
             except Exception as e:
                 log(f"❌ Error processing line {line_num}: {e}")
+                error_count += 1
+
+    log(f"🎉 Custom nodes setup complete: {success_count} success, {error_count} errors")
 
 if __name__ == "__main__":
     install_custom_nodes()

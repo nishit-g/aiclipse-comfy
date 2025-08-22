@@ -5,16 +5,16 @@ ENV TEMPLATE_TYPE="sd15-basic"
 ENV TEMPLATE_VERSION="1.0.0"
 ENV DOWNLOAD_MODELS=true
 
-# Copy template-specific manifests
-COPY models_manifest.txt /manifests/sd15_basic_models.txt
-COPY nodes_manifest.txt /manifests/sd15_basic_nodes.txt
+# Copy template-specific manifests with consistent naming
+COPY models_manifest.txt /manifests/sd15-basic_models.txt
+COPY nodes_manifest.txt /manifests/sd15-basic_nodes.txt
 
 # Copy workflows
 COPY workflows/ /opt/workflows/
 
-# Set environment variables
-ENV MODELS_MANIFEST="/manifests/sd15_basic_models.txt"
-ENV NODES_MANIFEST="/manifests/sd15_basic_nodes.txt"
+# Set environment variables to point to manifests
+ENV MODELS_MANIFEST="/manifests/sd15-basic_models.txt"
+ENV NODES_MANIFEST="/manifests/sd15-basic_nodes.txt"
 
 # Basic ComfyUI args for testing
 ENV COMFY_ARGS="--preview-method auto"

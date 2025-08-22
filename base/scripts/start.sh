@@ -58,14 +58,45 @@ log() {
 
 # Environment setup
 setup_environment() {
-    # Export RunPod environment for SSH sessions
-    printenv | grep -E '^RUNPOD_|^CUDA|^LD_LIBRARY_PATH|^PATH' | while read -r line; do
-        name=$(echo "$line" | cut -d= -f1)
-        value=$(echo "$line" | cut -d= -f2-)
-        echo "export $name=\"$value\"" >> /etc/rp_environment
+    log "🔧 Setting up environment..."
+
+
+    # Whitelist specific safe environment variables
+    SAFE_VARS=(
+        "RUNPOD_POD_ID"
+        "RUNPOD_POD_NAME"
+        "RUNPOD_API_ENDPOINT"
+        "CUDA_VISIBLE_DEVICES"
+        "NVIDIA_VISIBLE_DEVICES"
+        "LD_LIBRARY_PATH"
+        "PATH"
+        "PYTHONPATH"
+        "TEMPLATE_TYPE"
+        "TEMPLATE_VERSION"
+        "GPU_TYPE"
+    )
+
+
+    # Create environment file for SSH sessions
+    echo "# AiClipse Environment Variables" > /etc/rp_environment
+    echo "# Generated at $(date)" >> /etc/rp_environment
+
+
+    for var in "${SAFE_VARS[@]}"; do
+        if [[ -n "${!var}" ]]; then
+            # Escape quotes and special characters
+            value=$(printf '%q' "${!var}")
+            echo "export $var=$value" >> /etc/rp_environment
+            log "✅ Exported safe variable: $var"
+        fi
     done
-    echo 'source /etc/rp_environment' >> ~/.bashrc
-    echo 'source /etc/rp_environment' >> /etc/bash.bashrc
+
+    # Source environment in bash sessions
+    echo 'source /etc/rp_environment 2>/dev/null || true' >> ~/.bashrc
+    echo 'source /etc/rp_environment 2>/dev/null || true' >> /etc/bash.bashrc
+
+    # Set permissions
+    chmod 644 /etc/rp_environment
 }
 
 # SSH setup with environment export

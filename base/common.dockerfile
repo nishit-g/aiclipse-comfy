@@ -22,11 +22,22 @@ RUN wget https://github.com/zasper-io/zasper/releases/download/v0.1.0-alpha/zasp
     tar xf zasper-webapp-linux-amd64.tar.gz -C /usr/local/bin && \
     rm zasper-webapp-linux-amd64.tar.gz
 
-# Python setup
+# Python setup with base virtual environment
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
     update-alternatives --set python3 /usr/bin/python3.12 && \
-    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 && \
-    pip install --no-cache-dir jupyterlab uv
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
+
+# Create virtual environment and install base Python packages
+RUN python3.12 -m venv /venv && \
+    /venv/bin/pip install --no-cache-dir --upgrade pip wheel setuptools && \
+    /venv/bin/pip install --no-cache-dir \
+    jupyterlab \
+    uv \
+    huggingface-hub \
+    safetensors \
+    accelerate \
+    requests \
+    tqdm
 
 # SSH configuration for RunPod
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \

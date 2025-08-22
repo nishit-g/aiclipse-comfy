@@ -9,9 +9,9 @@ variable "VERSION" {
 # Base images
 target "base-common" {
     dockerfile = "base/common.dockerfile"
+    context = "."
     contexts = {
-        scripts = "./base/scripts"
-        manifests = "./manifests"  # Add manifests context
+        manifests = "./manifests"
     }
     tags = ["${REGISTRY}/aiclipse-base-common:${VERSION}"]
     platforms = ["linux/amd64"]
@@ -19,9 +19,10 @@ target "base-common" {
 
 target "base-rtx4090" {
     dockerfile = "base/rtx4090.dockerfile"
+    context = "."
     contexts = {
         scripts = "./base/scripts"
-        manifests = "./manifests"  # Add manifests context
+        manifests = "./manifests"
     }
     args = {
         BASE_IMAGE = "${REGISTRY}/aiclipse-base-common:${VERSION}"
@@ -33,9 +34,10 @@ target "base-rtx4090" {
 
 target "base-rtx5090" {
     dockerfile = "base/rtx5090.dockerfile"
+    context = "."
     contexts = {
         scripts = "./base/scripts"
-        manifests = "./manifests"  # Add manifests context
+        manifests = "./manifests"
     }
     args = {
         BASE_IMAGE = "${REGISTRY}/aiclipse-base-common:${VERSION}"
@@ -48,6 +50,10 @@ target "base-rtx5090" {
 # SD 1.5 Basic Template builds
 target "sd15-basic-4090" {
     dockerfile = "templates/sd15-basic/Dockerfile"
+    context = "templates/sd15-basic"
+    contexts = {
+        base = "."
+    }
     args = {
         BASE_IMAGE = "${REGISTRY}/aiclipse-base-rtx4090:${VERSION}"
     }
@@ -58,6 +64,10 @@ target "sd15-basic-4090" {
 
 target "sd15-basic-5090" {
     dockerfile = "templates/sd15-basic/Dockerfile"
+    context = "templates/sd15-basic"
+    contexts = {
+        base = "."
+    }
     args = {
         BASE_IMAGE = "${REGISTRY}/aiclipse-base-rtx5090:${VERSION}"
     }
@@ -71,12 +81,10 @@ group "bases" {
     targets = ["base-common", "base-rtx4090", "base-rtx5090"]
 }
 
-# Add to build groups
 group "sd15-basic" {
     targets = ["sd15-basic-4090", "sd15-basic-5090"]
 }
 
-# Update the "all" group to include sd15-basic
 group "all" {
     targets = ["bases", "sd15-basic"]
 }
