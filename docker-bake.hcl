@@ -1,5 +1,5 @@
 variable "REGISTRY" {
-    default = "ghcr.io/yourusername"
+    default = "ghcr.io/nishit-g"
 }
 
 variable "VERSION" {
@@ -11,6 +11,7 @@ target "base-common" {
     dockerfile = "base/common.dockerfile"
     contexts = {
         scripts = "./base/scripts"
+        manifests = "./manifests"  # Add manifests context
     }
     tags = ["${REGISTRY}/aiclipse-base-common:${VERSION}"]
     platforms = ["linux/amd64"]
@@ -20,6 +21,7 @@ target "base-rtx4090" {
     dockerfile = "base/rtx4090.dockerfile"
     contexts = {
         scripts = "./base/scripts"
+        manifests = "./manifests"  # Add manifests context
     }
     args = {
         BASE_IMAGE = "${REGISTRY}/aiclipse-base-common:${VERSION}"
@@ -33,6 +35,7 @@ target "base-rtx5090" {
     dockerfile = "base/rtx5090.dockerfile"
     contexts = {
         scripts = "./base/scripts"
+        manifests = "./manifests"  # Add manifests context
     }
     args = {
         BASE_IMAGE = "${REGISTRY}/aiclipse-base-common:${VERSION}"

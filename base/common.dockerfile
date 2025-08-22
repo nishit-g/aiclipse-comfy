@@ -38,4 +38,7 @@ RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/
 RUN mkdir -p /workspace/aiclipse/{ComfyUI,models,workflows,output,logs,temp} && \
     mkdir -p /workspace/aiclipse/models/{checkpoints,diffusion_models,vae,loras,clip,controlnet,upscale_models,embeddings}
 
+# Copy manifests directory
+COPY manifests/ /manifests/
+
 WORKDIR /workspace/aiclipse
