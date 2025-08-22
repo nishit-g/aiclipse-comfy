@@ -9,11 +9,14 @@ ENV PATH="/venv/bin:$PATH"
 # Install system dependencies
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
+    software-properties-common gpg-agent \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && \
+    apt-get install -y --no-install-recommends \
     git python3.12 python3.12-venv python3.12-dev \
     build-essential wget curl htop tmux nano vim \
     openssh-server nginx ca-certificates \
     ffmpeg jq aria2 rsync inotify-tools \
-    software-properties-common gpg-agent \
     && rm -rf /var/lib/apt/lists/*
 
 # Install modern tools
