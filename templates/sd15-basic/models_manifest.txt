@@ -1,0 +1,11 @@
+# Simple SD 1.5 Models for Testing
+# Format: repo_id|filename|target_subdir
+
+# Base SD 1.5 checkpoint
+runwayml/stable-diffusion-v1-5|v1-5-pruned-emaonly.safetensors|checkpoints
+
+# VAE for better image quality
+stabilityai/sd-vae-ft-mse-original|vae-ft-mse-840000-ema-pruned.safetensors|vae
+
+# Basic negative embedding
+sd-concepts-library/EasyNegative|learned_embeds.bin|embeddings

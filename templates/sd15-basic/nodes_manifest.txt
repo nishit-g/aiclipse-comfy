@@ -1,0 +1,10 @@
+# Simple SD 1.5 Custom Nodes
+# Format: repo_url|branch|category|description
+
+# Essential UI improvements
+https://github.com/rgthree/rgthree-comfy|main|ui|UI improvements and workflow tools
+https://github.com/pythongosssss/ComfyUI-Custom-Scripts|main|scripts|Custom script collection
+
+# Basic utility nodes
+https://github.com/WASasquatch/was-node-suite-comfyui|main|utility|WAS node suite for image processing
+https://github.com/jags111/efficiency-nodes-comfyui|main|efficiency|Efficiency nodes for optimized workflows

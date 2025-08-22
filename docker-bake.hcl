@@ -45,23 +45,23 @@ target "base-rtx5090" {
     depends_on = ["base-common"]
 }
 
-# Template builds
-target "headshots-4090" {
-    dockerfile = "templates/headshots/Dockerfile"
+# SD 1.5 Basic Template builds
+target "sd15-basic-4090" {
+    dockerfile = "templates/sd15-basic/Dockerfile"
     args = {
         BASE_IMAGE = "${REGISTRY}/aiclipse-base-rtx4090:${VERSION}"
     }
-    tags = ["${REGISTRY}/aiclipse-headshots:rtx4090-${VERSION}"]
+    tags = ["${REGISTRY}/aiclipse-sd15-basic:rtx4090-${VERSION}"]
     platforms = ["linux/amd64"]
     depends_on = ["base-rtx4090"]
 }
 
-target "headshots-5090" {
-    dockerfile = "templates/headshots/Dockerfile"
+target "sd15-basic-5090" {
+    dockerfile = "templates/sd15-basic/Dockerfile"
     args = {
         BASE_IMAGE = "${REGISTRY}/aiclipse-base-rtx5090:${VERSION}"
     }
-    tags = ["${REGISTRY}/aiclipse-headshots:rtx5090-${VERSION}"]
+    tags = ["${REGISTRY}/aiclipse-sd15-basic:rtx5090-${VERSION}"]
     platforms = ["linux/amd64"]
     depends_on = ["base-rtx5090"]
 }
@@ -71,10 +71,12 @@ group "bases" {
     targets = ["base-common", "base-rtx4090", "base-rtx5090"]
 }
 
-group "headshots" {
-    targets = ["headshots-4090", "headshots-5090"]
+# Add to build groups
+group "sd15-basic" {
+    targets = ["sd15-basic-4090", "sd15-basic-5090"]
 }
 
+# Update the "all" group to include sd15-basic
 group "all" {
-    targets = ["bases", "headshots"]
+    targets = ["bases", "sd15-basic"]
 }
