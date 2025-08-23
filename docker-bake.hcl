@@ -81,6 +81,16 @@ target "sd15-basic-rtx5090" {
   }
 }
 
+target "boomboom-rtx5090" {
+  inherits = ["_common"]
+  dockerfile = "Dockerfile"
+  context = "templates/boomboom"
+  tags = ["${REGISTRY}/aiclipse-flux-kontext:rtx5090-${VERSION}"]
+  args = {
+    BASE_IMAGE = "${REGISTRY}/aiclipse-base-rtx5090:${VERSION}"
+  }
+}
+
 # Build groups
 group "bases" {
   targets = ["base-common", "base-rtx4090", "base-rtx5090"]
@@ -90,6 +100,10 @@ group "sd15-basic" {
   targets = ["sd15-basic-rtx4090", "sd15-basic-rtx5090"]
 }
 
+group "boomboom" {
+  targets = ["boomboom-rtx5090"]
+}
+
 group "all" {
-  targets = ["base-common", "base-rtx4090", "base-rtx5090", "sd15-basic-rtx4090", "sd15-basic-rtx5090"]
+  targets = ["base-common", "base-rtx4090", "base-rtx5090", "sd15-basic-rtx4090", "sd15-basic-rtx5090", "boomboom-rtx5090"]
 }

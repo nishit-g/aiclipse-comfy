@@ -1,0 +1,42 @@
+# Flux-Kontext Custom Nodes - Advanced Image Editing
+
+# Specialized nodes for Flux-Kontext workflows and advanced image manipulation
+
+
+# ================================
+# ESSENTIAL UI & WORKFLOW
+# ================================
+
+# rgthree improvements - essential for complex workflows
+https://github.com/rgthree/rgthree-comfy|main|ui|Essential UI improvements and workflow tools
+
+# Custom scripts - quality of life improvements
+https://github.com/pythongosssss/ComfyUI-Custom-Scripts|main|scripts|Custom script collection for better UX
+
+# ================================
+# KONTEXT-SPECIFIC NODES
+# ================================
+
+# Advanced image editing nodes
+https://github.com/WASasquatch/was-node-suite-comfyui|main|utility|WAS node suite for image processing
+
+# ================================
+# PERFORMANCE OPTIMIZATION
+# ================================
+
+# Efficiency nodes for complex workflows
+https://github.com/jags111/efficiency-nodes-comfyui|main|efficiency|Efficiency nodes for optimized workflows
+
+# KJ Nodes for additional utilities
+https://github.com/kijai/ComfyUI-KJNodes|main|utility|KJ utility nodes collection
+
+# ================================
+# IMAGE PROCESSING & ENHANCEMENT
+# ================================
+
+# Impact Pack for advanced segmentation
+https://github.com/ltdrdata/ComfyUI-Impact-Pack|main|segmentation|Advanced segmentation tools
+
+
+# GGUF support (for quantized models)
+# https://github.com/city96/ComfyUI-GGUF|main|quantization|GGUF model support

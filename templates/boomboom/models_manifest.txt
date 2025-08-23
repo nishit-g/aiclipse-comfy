@@ -1,0 +1,36 @@
+# Flux-Kontext Template - Advanced Image Editing & Context Understanding
+# This template supports in-context image editing with natural language prompts
+
+# ================================
+# FLUX KONTEXT CORE MODELS
+# ================================
+
+# Main Flux-Kontext model (choose one based on your VRAM)
+# Full version - 24GB (best quality, needs 40GB+ VRAM)
+huggingface|black-forest-labs/FLUX.1-Kontext-dev|flux1-kontext-dev.safetensors|unet
+
+# FP8 version - 12GB (balanced performance/quality, needs 24GB+ VRAM) - RECOMMENDED
+# huggingface|6chan/flux1-kontext-dev-fp8|flux1-kontext-dev-fp8-e4m3fn.safetensors|unet
+
+# ComfyUI optimized FP8 version (alternative)
+huggingface|Comfy-Org/flux1-kontext-dev_ComfyUI|split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors|unet
+
+
+# ================================
+# FLUX VAE & ENCODERS
+# ================================
+
+# Flux VAE - Required for encoding/decoding
+huggingface|black-forest-labs/FLUX.1-Kontext-dev|ae.safetensors|vae
+
+
+# CLIP Text Encoders - Required for text understanding
+huggingface|comfyanonymous/flux_text_encoders|clip_l.safetensors|text_encoders
+huggingface|comfyanonymous/flux_text_encoders|t5xxl_fp16.safetensors|text_encoders
+
+
+# FP8 T5 encoder (smaller, for lower VRAM)
+huggingface|comfyanonymous/flux_text_encoders|t5xxl_fp8_e4m3fn.safetensors|text_encoders
+
+r2|models/loras/v9_xelios_it.safetensors|v9_xelios_it.safetensors|loras
+
