@@ -163,15 +163,14 @@ download_models_enhanced() {
         return 0
     fi
 
-    # Skip if no manifest
-    if [ ! -f "$manifest_file" ]; then
+    if ! setup_manifest; then
         log "ℹ️ No models to download"
         return 0
     fi
 
-    # Setup manifest and validate
-    if ! setup_manifest; then
-        return 1
+    if [ ! -f "$manifest_file" ]; then
+        log "ℹ️ No models to download"
+        return 0
     fi
 
     # Check dependencies
