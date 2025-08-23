@@ -50,10 +50,7 @@ jobs:
             echo "🔄 Force rebuild requested, using --no-cache"
           fi
 
-          docker buildx bake base-common \
-            --set "*.cache-from=type=gha" \
-            --set "*.cache-to=type=gha,mode=max" \
-            --push $EXTRA_ARGS
+          docker buildx bake base-common --push $EXTRA_ARGS
 
   build-gpu-bases:
     runs-on: ubuntu-latest
