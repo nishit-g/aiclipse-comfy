@@ -1,3 +1,5 @@
+# .github/workflows/build.yml - BEST PRACTICE VERSION
+
 name: Build ComfyUI Templates
 
 on:
@@ -9,16 +11,26 @@ on:
       - 'templates/**'
       - 'docker-bake.hcl'
 
-  # Trigger 2: Manual from the Actions tab
+  # Trigger 2: Manual from the Actions tab - IMPROVED VERSION
   workflow_dispatch:
     inputs:
-      targets_to_build:
-        description: 'Comma-separated list of images to build (e.g., "base-rtx4090, sd15-basic-4090"), or "all".'
+      build_target:
+        description: 'What to build'
         required: true
-        default: 'all'
-        type: string
+        type: choice  # ✅ Use choice instead of string
+        default: 'changed-files'  # ✅ Smart default
+        options:
+          - 'changed-files'     # Only build what changed (smart)
+          - 'all'              # Build everything
+          - 'bases'            # Base images only
+          - 'base-common'      # Common base only
+          - 'base-rtx4090'     # RTX 4090 base only
+          - 'base-rtx5090'     # RTX 5090 base only
+          - 'sd15-basic'       # SD15 templates only
+          - 'boomboom'         # Boomboom template only
+
       force_rebuild:
-        description: 'Force rebuild for all selected targets (ignores cache).'
+        description: 'Ignore cache and rebuild everything'
         required: false
         type: boolean
         default: false
@@ -28,8 +40,48 @@ env:
   VERSION: ${{ github.ref_name || 'latest' }}
 
 jobs:
+  # NEW: Change detection job for smart builds
+  detect-changes:
+    runs-on: ubuntu-latest
+    # Only run on push events or when 'changed-files' is selected
+    if: github.event_name == 'push' || inputs.build_target == 'changed-files'
+    outputs:
+      base-changed: ${{ steps.changes.outputs.base }}
+      templates-changed: ${{ steps.changes.outputs.templates }}
+      boomboom-changed: ${{ steps.changes.outputs.boomboom }}
+      sd15-changed: ${{ steps.changes.outputs.sd15 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            base:
+              - 'base/**'
+              - 'manifests/base_nodes.txt'
+              - 'docker-bake.hcl'
+            templates:
+              - 'templates/**'
+            boomboom:
+              - 'templates/boomboom/**'
+            sd15:
+              - 'templates/sd15-basic/**'
+
   build-base-common:
     runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: |
+      !cancelled() &&
+      (
+        inputs.build_target == 'all' ||
+        inputs.build_target == 'bases' ||
+        inputs.build_target == 'base-common' ||
+        (inputs.build_target == 'changed-files' && needs.detect-changes.outputs.base-changed == 'true') ||
+        (github.event_name == 'push' && needs.detect-changes.outputs.base-changed == 'true')
+      )
     permissions:
       contents: read
       packages: write
@@ -47,14 +99,12 @@ jobs:
           EXTRA_ARGS=""
           if [ "${{ inputs.force_rebuild }}" = "true" ]; then
             EXTRA_ARGS="--no-cache"
-            echo "🔄 Force rebuild requested, using --no-cache"
           fi
-
           docker buildx bake base-common --push $EXTRA_ARGS
 
   build-gpu-bases:
     runs-on: ubuntu-latest
-    needs: build-base-common
+    needs: [detect-changes, build-base-common]
     if: ${{ !cancelled() && !failure() }}
     permissions:
       contents: read
@@ -64,24 +114,56 @@ jobs:
       matrix:
         gpu: [rtx4090, rtx5090]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Should build this GPU base?
         id: should-build
         run: |
-          TARGETS="${{ inputs.targets_to_build || 'all' }}"
+          BUILD_TARGET="${{ inputs.build_target || 'changed-files' }}"
           GPU_BASE="base-${{ matrix.gpu }}"
-          # Build if explicitly requested OR if a template depending on it is requested.
-          if [[ "$TARGETS" == "all" || "$TARGETS" == *"$GPU_BASE"* || "$TARGETS" == *"-${{ matrix.gpu }}"* ]]; then
-            echo "should-build=true" >> $GITHUB_OUTPUT
-            echo "✅ Will build base-${{ matrix.gpu }} as it (or a dependency) was requested."
-          else
-            echo "should-build=false" >> $GITHUB_OUTPUT
-            echo "⏭️ Skipping base-${{ matrix.gpu }} (not requested)."
-          fi
 
-      - name: Setup and Build
+          SHOULD_BUILD="false"
+
+          # Build logic based on choice
+          case "$BUILD_TARGET" in
+            "all"|"bases")
+              SHOULD_BUILD="true"
+              echo "✅ Building $GPU_BASE (target: $BUILD_TARGET)"
+              ;;
+            "base-${{ matrix.gpu }}")
+              SHOULD_BUILD="true"
+              echo "✅ Building $GPU_BASE (explicitly requested)"
+              ;;
+            "boomboom")
+              if [[ "${{ matrix.gpu }}" == "rtx5090" ]]; then
+                SHOULD_BUILD="true"
+                echo "✅ Building $GPU_BASE (needed for boomboom)"
+              fi
+              ;;
+            "sd15-basic")
+              if [[ "${{ matrix.gpu }}" == "rtx4090" ]]; then
+                SHOULD_BUILD="true"
+                echo "✅ Building $GPU_BASE (needed for sd15-basic)"
+              fi
+              ;;
+            "changed-files")
+              if [[ "${{ needs.detect-changes.outputs.base-changed }}" == "true" ]]; then
+                SHOULD_BUILD="true"
+                echo "✅ Building $GPU_BASE (base files changed)"
+              else
+                echo "⏭️ Skipping $GPU_BASE (only template files changed)"
+              fi
+              ;;
+            *)
+              echo "⏭️ Skipping $GPU_BASE (not needed for $BUILD_TARGET)"
+              ;;
+          esac
+
+          echo "should-build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
+
+      - name: Checkout repository
+        if: steps.should-build.outputs.should-build == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
         if: steps.should-build.outputs.should-build == 'true'
         uses: ./.github/actions/setup-build-env
         with:
@@ -94,14 +176,12 @@ jobs:
           if [ "${{ inputs.force_rebuild }}" = "true" ]; then
             EXTRA_ARGS="--no-cache"
           fi
-          docker buildx bake base-${{ matrix.gpu }} \
-            --set "*.cache-from=type=gha" \
-            --set "*.cache-to=type=gha,mode=max" \
-            --push $EXTRA_ARGS
+          # ✅ Trust the bake file cache settings
+          docker buildx bake base-${{ matrix.gpu }} --push $EXTRA_ARGS
 
   build-templates:
     runs-on: ubuntu-latest
-    needs: build-gpu-bases
+    needs: [detect-changes, build-gpu-bases]
     if: ${{ !cancelled() && !failure() }}
     permissions:
       contents: read
@@ -118,23 +198,47 @@ jobs:
             gpu: rtx5090
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Should build this template?
         id: should-build
         run: |
-          TARGETS="${{ inputs.targets_to_build || 'all' }}"
-          FULL_NAME="${{ matrix.template }}-${{ matrix.gpu }}"
-          if [[ "$TARGETS" == "all" || "$TARGETS" == *"$FULL_NAME"* ]]; then
-            echo "should-build=true" >> $GITHUB_OUTPUT
-            echo "✅ Will build $FULL_NAME (explicitly requested)."
-          else
-            echo "should-build=false" >> $GITHUB_OUTPUT
-            echo "⏭️ Skipping $FULL_NAME (not requested)."
-          fi
+          BUILD_TARGET="${{ inputs.build_target || 'changed-files' }}"
+          TEMPLATE_GPU="${{ matrix.template }}-${{ matrix.gpu }}"
 
-      - name: Setup and Build
+          SHOULD_BUILD="false"
+
+          case "$BUILD_TARGET" in
+            "all")
+              SHOULD_BUILD="true"
+              echo "✅ Building $TEMPLATE_GPU (build all)"
+              ;;
+            "${{ matrix.template }}")
+              SHOULD_BUILD="true"
+              echo "✅ Building $TEMPLATE_GPU (template requested)"
+              ;;
+            "changed-files")
+              if [[ "${{ needs.detect-changes.outputs.base-changed }}" == "true" ]]; then
+                SHOULD_BUILD="true"
+                echo "✅ Building $TEMPLATE_GPU (base changed)"
+              elif [[ "${{ matrix.template }}" == "boomboom" && "${{ needs.detect-changes.outputs.boomboom-changed }}" == "true" ]]; then
+                SHOULD_BUILD="true"
+                echo "✅ Building $TEMPLATE_GPU (boomboom changed)"
+              elif [[ "${{ matrix.template }}" == "sd15-basic" && "${{ needs.detect-changes.outputs.sd15-changed }}" == "true" ]]; then
+                SHOULD_BUILD="true"
+                echo "✅ Building $TEMPLATE_GPU (sd15-basic changed)"
+              fi
+              ;;
+            *)
+              echo "⏭️ Skipping $TEMPLATE_GPU (not requested)"
+              ;;
+          esac
+
+          echo "should-build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
+
+      - name: Checkout repository
+        if: steps.should-build.outputs.should-build == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
         if: steps.should-build.outputs.should-build == 'true'
         uses: ./.github/actions/setup-build-env
         with:
@@ -147,19 +251,17 @@ jobs:
           if [ "${{ inputs.force_rebuild }}" = "true" ]; then
             EXTRA_ARGS="--no-cache"
           fi
-          docker buildx bake ${{ matrix.template }}-${{ matrix.gpu }} \
-            --set "*.cache-from=type=gha" \
-            --set "*.cache-to=type=gha,mode=max" \
-            --push $EXTRA_ARGS
+          # ✅ Trust the bake file cache settings
+          docker buildx bake ${{ matrix.template }}-${{ matrix.gpu }} --push $EXTRA_ARGS
 
   build-summary:
     runs-on: ubuntu-latest
-    needs: [build-base-common, build-gpu-bases, build-templates]
+    needs: [detect-changes, build-base-common, build-gpu-bases, build-templates]
     if: always()
     steps:
       - name: Build Summary
         run: |
           echo "## 🚀 Build Complete" >> $GITHUB_STEP_SUMMARY
           echo "**Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Targets**: ${{ inputs.targets_to_build || 'all (push)' }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Force Rebuild**: ${{ inputs.force_rebuild }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target**: ${{ inputs.build_target || 'auto (push)' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Force Rebuild**: ${{ inputs.force_rebuild || 'false' }}" >> $GITHUB_STEP_SUMMARY

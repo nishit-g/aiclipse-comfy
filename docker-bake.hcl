@@ -11,12 +11,13 @@ target "_common" {
   platforms = ["linux/amd64"]
 }
 
-# Base images with registry cache
+# Base images with FIXED registry cache
 target "base-common" {
   inherits = ["_common"]
   dockerfile = "base/common.dockerfile"
   context = "."
   tags = ["${REGISTRY}/aiclipse-base-common:${VERSION}"]
+  # FIXED: Specific cache scope for base-common
   cache-from = ["type=registry,ref=${REGISTRY}/aiclipse-base-common:cache"]
   cache-to = ["type=registry,ref=${REGISTRY}/aiclipse-base-common:cache,mode=max"]
   contexts = {
@@ -29,6 +30,7 @@ target "base-rtx4090" {
   dockerfile = "base/rtx4090.dockerfile"
   context = "."
   tags = ["${REGISTRY}/aiclipse-base-rtx4090:${VERSION}"]
+  # FIXED: Specific cache scope for rtx4090
   cache-from = ["type=registry,ref=${REGISTRY}/aiclipse-base-rtx4090:cache"]
   cache-to = ["type=registry,ref=${REGISTRY}/aiclipse-base-rtx4090:cache,mode=max"]
   contexts = {
@@ -45,6 +47,7 @@ target "base-rtx5090" {
   dockerfile = "base/rtx5090.dockerfile"
   context = "."
   tags = ["${REGISTRY}/aiclipse-base-rtx5090:${VERSION}"]
+  # FIXED: Specific cache scope for rtx5090
   cache-from = ["type=registry,ref=${REGISTRY}/aiclipse-base-rtx5090:cache"]
   cache-to = ["type=registry,ref=${REGISTRY}/aiclipse-base-rtx5090:cache,mode=max"]
   contexts = {
@@ -56,12 +59,13 @@ target "base-rtx5090" {
   }
 }
 
-# Templates with registry cache
+# Templates with FIXED registry cache
 target "sd15-basic-rtx4090" {
   inherits = ["_common"]
   dockerfile = "Dockerfile"
   context = "templates/sd15-basic"
   tags = ["${REGISTRY}/aiclipse-sd15-basic:rtx4090-${VERSION}"]
+  # FIXED: Specific cache scope for sd15-basic-rtx4090
   cache-from = ["type=registry,ref=${REGISTRY}/aiclipse-sd15-basic:rtx4090-cache"]
   cache-to = ["type=registry,ref=${REGISTRY}/aiclipse-sd15-basic:rtx4090-cache,mode=max"]
   args = {
@@ -74,6 +78,7 @@ target "sd15-basic-rtx5090" {
   dockerfile = "Dockerfile"
   context = "templates/sd15-basic"
   tags = ["${REGISTRY}/aiclipse-sd15-basic:rtx5090-${VERSION}"]
+  # FIXED: Specific cache scope for sd15-basic-rtx5090
   cache-from = ["type=registry,ref=${REGISTRY}/aiclipse-sd15-basic:rtx5090-cache"]
   cache-to = ["type=registry,ref=${REGISTRY}/aiclipse-sd15-basic:rtx5090-cache,mode=max"]
   args = {
@@ -86,12 +91,15 @@ target "boomboom-rtx5090" {
   dockerfile = "Dockerfile"
   context = "templates/boomboom"
   tags = ["${REGISTRY}/aiclipse-boomboom:rtx5090-${VERSION}"]
+  # FIXED: Specific cache scope for boomboom-rtx5090
+  cache-from = ["type=registry,ref=${REGISTRY}/aiclipse-boomboom:rtx5090-cache"]
+  cache-to = ["type=registry,ref=${REGISTRY}/aiclipse-boomboom:rtx5090-cache,mode=max"]
   args = {
     BASE_IMAGE = "${REGISTRY}/aiclipse-base-rtx5090:${VERSION}"
   }
 }
 
-# Build groups
+# Build groups (unchanged)
 group "bases" {
   targets = ["base-common", "base-rtx4090", "base-rtx5090"]
 }
