@@ -40,7 +40,9 @@ RUN python3.12 -m venv /venv && \
     safetensors \
     accelerate \
     requests \
-    tqdm
+    tqdm \
+    boto3 \
+    botocore
 
 # SSH configuration for RunPod
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
@@ -54,5 +56,23 @@ RUN mkdir -p /workspace/aiclipse/{ComfyUI,models,workflows,output,logs,temp} && 
 
 # Copy manifests directory
 COPY manifests/ /manifests/
+
+# Copy enhanced scripts (this will replace the old download_models.py)
+COPY base/scripts/ /scripts/
+RUN chmod +x /scripts/*.sh /scripts/*.py
+
+# Install additional dependencies for enhanced features
+RUN /venv/bin/pip install --no-cache-dir \
+    boto3 \
+    botocore \
+    requests[security] \
+    urllib3
+
+# Set default environment variables for enhanced features
+ENV DOWNLOAD_MODELS=true
+ENV VERIFY_CHECKSUMS=true
+ENV AUTO_RETRY_FAILED=3
+ENV CIVITAI_RATE_LIMIT=10
+ENV CIVITAI_DOWNLOAD_TIMEOUT=3000
 
 WORKDIR /workspace/aiclipse
