@@ -85,7 +85,7 @@ target "boomboom-rtx5090" {
   inherits = ["_common"]
   dockerfile = "Dockerfile"
   context = "templates/boomboom"
-  tags = ["${REGISTRY}/aiclipse-flux-kontext:rtx5090-${VERSION}"]
+  tags = ["${REGISTRY}/aiclipse-boomboom:rtx5090-${VERSION}"]
   args = {
     BASE_IMAGE = "${REGISTRY}/aiclipse-base-rtx5090:${VERSION}"
   }
