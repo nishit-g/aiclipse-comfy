@@ -63,11 +63,16 @@ jobs:
 
       - name: Free disk space
         if: steps.check.outputs.should-skip == 'false'
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost
-          sudo apt-get remove -y '^dotnet-.*' '^llvm-.*' azure-cli google-cloud-sdk hhvm google-chrome-stable
-          sudo apt-get autoremove -y && sudo apt-get clean
-          df -h
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # Keep tools we might need
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false  # Keep docker cache
+          swap-storage: true
 
       - name: Set up Docker Buildx
         if: steps.check.outputs.should-skip == 'false'
@@ -151,9 +156,15 @@ jobs:
 
       - name: Free disk space
         if: steps.should-build.outputs.should-build == 'true' && steps.check.outputs.should-skip == 'false'
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost
-          df -h
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
 
       - name: Set up Docker Buildx
         if: steps.should-build.outputs.should-build == 'true' && steps.check.outputs.should-skip == 'false'
@@ -225,9 +236,14 @@ jobs:
 
       - name: Free disk space
         if: steps.should-build.outputs.should-build == 'true'
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc
-          df -h
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
 
       - name: Set up Docker Buildx
         if: steps.should-build.outputs.should-build == 'true'
