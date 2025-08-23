@@ -1,27 +1,24 @@
 name: Build ComfyUI Templates
 
 on:
+  # Trigger 1: Automatic on push to main
   push:
     branches: [main]
     paths:
       - 'base/**'
       - 'templates/**'
       - 'docker-bake.hcl'
+
+  # Trigger 2: Manual from the Actions tab
   workflow_dispatch:
     inputs:
-      target:
-        description: 'What to build'
+      targets_to_build:
+        description: 'Comma-separated list of images to build (e.g., "base-rtx4090, sd15-basic-4090"), or "all".'
         required: true
-        type: choice
-        options:
-        - 'base-common-only'
-        - 'base-rtx4090-stack'      # builds common + rtx4090
-        - 'base-rtx5090-stack'      # builds common + rtx5090
-        - 'sd15-basic-4090'         # builds full stack + template
-        - 'sd15-basic-5090'         # builds full stack + template
-        - 'all-templates'           # builds everything
+        default: 'all'
+        type: string
       force_rebuild:
-        description: 'Force rebuild (ignore existing images)'
+        description: 'Force rebuild for all selected targets (ignores cache).'
         required: false
         type: boolean
         default: false
@@ -31,74 +28,30 @@ env:
   VERSION: ${{ github.ref_name || 'latest' }}
 
 jobs:
-  # Step 1: Always build base-common first (root dependency)
   build-base-common:
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
     permissions:
       contents: read
       packages: write
-    outputs:
-      should-skip: ${{ steps.check.outputs.should-skip }}
-      image-exists: ${{ steps.check.outputs.exists }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Check if base-common exists
-        id: check
-        run: |
-          if [ "${{ inputs.force_rebuild }}" = "true" ]; then
-            echo "should-skip=false" >> $GITHUB_OUTPUT
-            echo "🔄 Force rebuild requested"
-          elif docker manifest inspect ${{ env.REGISTRY }}/aiclipse-base-common:${{ env.VERSION }} >/dev/null 2>&1; then
-            echo "should-skip=true" >> $GITHUB_OUTPUT
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✅ base-common:${{ env.VERSION }} exists, skipping"
-          else
-            echo "should-skip=false" >> $GITHUB_OUTPUT
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "🔨 base-common:${{ env.VERSION }} missing, will build"
-          fi
-
-      - name: Free disk space
-        if: steps.check.outputs.should-skip == 'false'
-        uses: jlumbroso/free-disk-space@main
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup-build-env
         with:
-          # Keep tools we might need
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false  # Keep docker cache
-          swap-storage: true
-
-      - name: Set up Docker Buildx
-        if: steps.check.outputs.should-skip == 'false'
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:buildx-stable-1
-            restart-policy=no
-
-      - name: Login to GHCR
-        if: steps.check.outputs.should-skip == 'false'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push base-common
-        if: steps.check.outputs.should-skip == 'false'
         run: |
-          docker buildx bake base-common \
-            --set base-common.cache-from=type=gha,scope=base-common \
-            --set base-common.cache-to=type=gha,mode=max,scope=base-common \
-            --push
+          EXTRA_ARGS=""
+          if [ "${{ inputs.force_rebuild }}" = "true" ]; then
+            EXTRA_ARGS="--no-cache"
+            echo "🔄 Force rebuild requested, using --no-cache"
+          fi
 
-  # Step 2: Build GPU bases (depend on base-common)
+          docker buildx bake base-common \
+            --set "*.cache-from=type=gha" \
+            --set "*.cache-to=type=gha,mode=max" \
+            --push $EXTRA_ARGS
+
   build-gpu-bases:
     runs-on: ubuntu-latest
     needs: build-base-common
@@ -114,82 +67,38 @@ jobs:
       - name: Should build this GPU base?
         id: should-build
         run: |
-          TARGET="${{ inputs.target || 'all-templates' }}"
-          GPU="${{ matrix.gpu }}"
-
-          case "$TARGET" in
-            "base-${GPU}-stack"|"*-${GPU}"|"all-templates")
-              echo "should-build=true" >> $GITHUB_OUTPUT
-              echo "🔨 Will build base-${GPU}"
-              ;;
-            "base-common-only")
-              echo "should-build=false" >> $GITHUB_OUTPUT
-              echo "⏭️ Skipping base-${GPU} (common-only requested)"
-              ;;
-            *)
-              if [[ "$TARGET" == *"$GPU"* ]]; then
-                echo "should-build=true" >> $GITHUB_OUTPUT
-              else
-                echo "should-build=false" >> $GITHUB_OUTPUT
-                echo "⏭️ Skipping base-${GPU} (not needed for $TARGET)"
-              fi
-              ;;
-          esac
-
-      - name: Check if image exists
-        id: check
-        if: steps.should-build.outputs.should-build == 'true'
-        run: |
-          if [ "${{ inputs.force_rebuild }}" = "true" ]; then
-            echo "should-skip=false" >> $GITHUB_OUTPUT
-          elif docker manifest inspect ${{ env.REGISTRY }}/aiclipse-base-${{ matrix.gpu }}:${{ env.VERSION }} >/dev/null 2>&1; then
-            echo "should-skip=true" >> $GITHUB_OUTPUT
-            echo "✅ base-${{ matrix.gpu }} exists, skipping"
+          TARGETS="${{ inputs.targets_to_build || 'all' }}"
+          GPU_BASE="base-${{ matrix.gpu }}"
+          # Build if explicitly requested OR if a template depending on it is requested.
+          if [[ "$TARGETS" == "all" || "$TARGETS" == *"$GPU_BASE"* || "$TARGETS" == *"-${{ matrix.gpu }}"* ]]; then
+            echo "should-build=true" >> $GITHUB_OUTPUT
+            echo "✅ Will build base-${{ matrix.gpu }} as it (or a dependency) was requested."
           else
-            echo "should-skip=false" >> $GITHUB_OUTPUT
-            echo "🔨 base-${{ matrix.gpu }} missing, will build"
+            echo "should-build=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Skipping base-${{ matrix.gpu }} (not requested)."
           fi
 
-      - name: Checkout
-        if: steps.should-build.outputs.should-build == 'true' && steps.check.outputs.should-skip == 'false'
-        uses: actions/checkout@v4
-
-      - name: Free disk space
-        if: steps.should-build.outputs.should-build == 'true' && steps.check.outputs.should-skip == 'false'
-        uses: jlumbroso/free-disk-space@main
+      - name: Setup and Build
+        if: steps.should-build.outputs.should-build == 'true'
+        uses: ./.github/actions/setup-build-env
         with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
-
-      - name: Set up Docker Buildx
-        if: steps.should-build.outputs.should-build == 'true' && steps.check.outputs.should-skip == 'false'
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        if: steps.should-build.outputs.should-build == 'true' && steps.check.outputs.should-skip == 'false'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push base-${{ matrix.gpu }}
-        if: steps.should-build.outputs.should-build == 'true' && steps.check.outputs.should-skip == 'false'
+        if: steps.should-build.outputs.should-build == 'true'
         run: |
+          EXTRA_ARGS=""
+          if [ "${{ inputs.force_rebuild }}" = "true" ]; then
+            EXTRA_ARGS="--no-cache"
+          fi
           docker buildx bake base-${{ matrix.gpu }} \
-            --set base-${{ matrix.gpu }}.cache-from=type=gha,scope=base-${{ matrix.gpu }} \
-            --set base-${{ matrix.gpu }}.cache-to=type=gha,mode=max,scope=base-${{ matrix.gpu }} \
-            --push
+            --set "*.cache-from=type=gha" \
+            --set "*.cache-to=type=gha,mode=max" \
+            --push $EXTRA_ARGS
 
-  # Step 3: Build templates (depend on GPU bases)
   build-templates:
     runs-on: ubuntu-latest
-    needs: [build-base-common, build-gpu-bases]
+    needs: build-gpu-bases
     if: ${{ !cancelled() && !failure() }}
     permissions:
       contents: read
@@ -210,62 +119,34 @@ jobs:
       - name: Should build this template?
         id: should-build
         run: |
-          TARGET="${{ inputs.target || 'all-templates' }}"
-          TEMPLATE="${{ matrix.template }}"
-          GPU="${{ matrix.gpu }}"
-          FULL_NAME="${TEMPLATE}-${GPU}"
+          TARGETS="${{ inputs.targets_to_build || 'all' }}"
+          FULL_NAME="${{ matrix.template }}-${{ matrix.gpu }}"
+          if [[ "$TARGETS" == "all" || "$TARGETS" == *"$FULL_NAME"* ]]; then
+            echo "should-build=true" >> $GITHUB_OUTPUT
+            echo "✅ Will build $FULL_NAME (explicitly requested)."
+          else
+            echo "should-build=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Skipping $FULL_NAME (not requested)."
+          fi
 
-          case "$TARGET" in
-            "$FULL_NAME"|"all-templates")
-              echo "should-build=true" >> $GITHUB_OUTPUT
-              echo "🔨 Will build $FULL_NAME"
-              ;;
-            "base-"*)
-              echo "should-build=false" >> $GITHUB_OUTPUT
-              echo "⏭️ Skipping $FULL_NAME (base-only build)"
-              ;;
-            *)
-              echo "should-build=false" >> $GITHUB_OUTPUT
-              echo "⏭️ Skipping $FULL_NAME (not selected)"
-              ;;
-          esac
-
-      - name: Checkout
+      - name: Setup and Build
         if: steps.should-build.outputs.should-build == 'true'
-        uses: actions/checkout@v4
-
-      - name: Free disk space
-        if: steps.should-build.outputs.should-build == 'true'
-        uses: jlumbroso/free-disk-space@main
+        uses: ./.github/actions/setup-build-env
         with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
-
-      - name: Set up Docker Buildx
-        if: steps.should-build.outputs.should-build == 'true'
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        if: steps.should-build.outputs.should-build == 'true'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push ${{ matrix.template }}-${{ matrix.gpu }}
         if: steps.should-build.outputs.should-build == 'true'
         run: |
+          EXTRA_ARGS=""
+          if [ "${{ inputs.force_rebuild }}" = "true" ]; then
+            EXTRA_ARGS="--no-cache"
+          fi
           docker buildx bake ${{ matrix.template }}-${{ matrix.gpu }} \
-            --set ${{ matrix.template }}-${{ matrix.gpu }}.cache-from=type=gha,scope=${{ matrix.template }}-${{ matrix.gpu }} \
-            --set ${{ matrix.template }}-${{ matrix.gpu }}.cache-to=type=gha,mode=max,scope=${{ matrix.template }}-${{ matrix.gpu }} \
-            --push
+            --set "*.cache-from=type=gha" \
+            --set "*.cache-to=type=gha,mode=max" \
+            --push $EXTRA_ARGS
 
-  # Summary
   build-summary:
     runs-on: ubuntu-latest
     needs: [build-base-common, build-gpu-bases, build-templates]
@@ -274,8 +155,6 @@ jobs:
       - name: Build Summary
         run: |
           echo "## 🚀 Build Complete" >> $GITHUB_STEP_SUMMARY
-          echo "**Target**: ${{ inputs.target || 'auto (push)' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Targets**: ${{ inputs.targets_to_build || 'all (push)' }}" >> $GITHUB_STEP_SUMMARY
           echo "**Force Rebuild**: ${{ inputs.force_rebuild }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Registry**: ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Version**: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
