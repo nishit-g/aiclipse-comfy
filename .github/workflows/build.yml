@@ -106,8 +106,8 @@ jobs:
               BUILD_BASE_RTX4090=true
               BUILD_BASE_RTX5090=true
               BUILD_BOOMBOOM=true
-              BUILD_SD15_4090=true
-              BUILD_SD15_5090=true
+              BUILD_SD15_4090=false
+              BUILD_SD15_5090=false
               echo "🔄 Building everything"
               ;;
             "base-common")
