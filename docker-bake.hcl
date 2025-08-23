@@ -51,7 +51,7 @@ target "base-rtx5090" {
 }
 
 # SD 1.5 Basic Template builds
-target "sd15-basic-4090" {
+target "sd15-basic-rtx4090" {  # Match workflow expectation
   inherits = ["_common"]
   dockerfile = "Dockerfile"
   context = "templates/sd15-basic"
@@ -61,7 +61,7 @@ target "sd15-basic-4090" {
   }
 }
 
-target "sd15-basic-5090" {
+target "sd15-basic-rtx5090" {  # Match workflow expectation
   inherits = ["_common"]
   dockerfile = "Dockerfile"
   context = "templates/sd15-basic"
