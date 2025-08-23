@@ -27,4 +27,7 @@ ENV FLUX_KONTEXT_MODE=true
 ENV ENABLE_TORCH_COMPILE=true
 ENV ENABLE_TEA_CACHE=true
 
+ENV MODELS_MANIFEST="/manifests/boomboom_models.txt"
+ENV NODES_MANIFEST="/manifests/boomboom_nodes.txt"
+
 CMD ["/scripts/start.sh"]
