@@ -114,6 +114,8 @@ jobs:
             gpu: rtx4090
           - template: sd15-basic
             gpu: rtx5090
+          - template: boomboom
+            gpu: rtx5090
 
     steps:
       - name: Checkout repository
