@@ -40,3 +40,6 @@ https://github.com/ltdrdata/ComfyUI-Impact-Pack|main|segmentation|Advanced segme
 
 # GGUF support (for quantized models)
 # https://github.com/city96/ComfyUI-GGUF|main|quantization|GGUF model support
+
+# Core plugin for connecting to the Comfy Deploy Platform
+https://github.com/BennyKok/comfyui-deploy.git|main|plugin|Comfy Deploy Platform Connector
