@@ -2,6 +2,7 @@
 """
 Enhanced Model Downloader for AiClipse ComfyUI
 Supports HuggingFace Hub, Cloudflare R2, and CivitAI downloads
+trigger
 """
 
 import argparse
@@ -498,14 +499,14 @@ def main():
 Examples:
   # Download from manifest
   python download_models.py --manifest models.txt --models-dir /workspace/models
-  
+
   # Validate manifest only
   python download_models.py --manifest models.txt --models-dir /tmp --validate-only
 
 Manifest format:
   # Legacy HuggingFace format
   repo_id|filename|subdir[|checksum]
-  
+
   # Enhanced format with source
   huggingface|repo_id|filename|subdir[|checksum]
   r2|bucket/path/file.ext|filename|subdir[|checksum]
