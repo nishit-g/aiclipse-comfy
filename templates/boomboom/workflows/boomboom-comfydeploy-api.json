@@ -1,0 +1,337 @@
+{
+  "6": {
+    "inputs": {
+      "text": [
+        "239",
+        0
+      ],
+      "clip": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "31",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "31": {
+    "inputs": {
+      "seed": [
+        "244",
+        0
+      ],
+      "steps": [
+        "246",
+        0
+      ],
+      "cfg": [
+        "247",
+        0
+      ],
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "232",
+        0
+      ],
+      "positive": [
+        "35",
+        0
+      ],
+      "negative": [
+        "135",
+        0
+      ],
+      "latent_image": [
+        "236",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "35": {
+    "inputs": {
+      "guidance": 2.5,
+      "conditioning": [
+        "229",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  },
+  "38": {
+    "inputs": {
+      "clip_name1": "clip_l.safetensors",
+      "clip_name2": "t5xxl_fp16.safetensors",
+      "type": "flux",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "DualCLIPLoader"
+    }
+  },
+  "39": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "124": {
+    "inputs": {
+      "pixels": [
+        "230",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "135": {
+    "inputs": {
+      "conditioning": [
+        "229",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "ConditioningZeroOut"
+    }
+  },
+  "228": {
+    "inputs": {
+      "unet_name": "flux1-kontext-dev.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "229": {
+    "inputs": {
+      "conditioning": [
+        "6",
+        0
+      ],
+      "latent": [
+        "236",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "ReferenceLatent"
+    }
+  },
+  "230": {
+    "inputs": {
+      "image": [
+        "240",
+        0
+      ]
+    },
+    "class_type": "FluxKontextImageScale",
+    "_meta": {
+      "title": "FluxKontextImageScale"
+    }
+  },
+  "231": {
+    "inputs": {
+      "model_type": "flux-kontext",
+      "rel_l1_thresh": 0.4,
+      "start_percent": 0,
+      "end_percent": 1,
+      "cache_device": "cuda",
+      "model": [
+        "228",
+        0
+      ]
+    },
+    "class_type": "TeaCache",
+    "_meta": {
+      "title": "TeaCache"
+    }
+  },
+  "232": {
+    "inputs": {
+      "mode": "default",
+      "backend": "inductor",
+      "fullgraph": false,
+      "dynamic": false,
+      "model": [
+        "231",
+        0
+      ]
+    },
+    "class_type": "CompileModel",
+    "_meta": {
+      "title": "Compile Model"
+    }
+  },
+  "233": {
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "236": {
+    "inputs": {
+      "amount": [
+        "243",
+        0
+      ],
+      "samples": [
+        "124",
+        0
+      ]
+    },
+    "class_type": "RepeatLatentBatch",
+    "_meta": {
+      "title": "Repeat Latent Batch"
+    }
+  },
+  "237": {
+    "inputs": {
+      "image": "v2-animal-story(22).png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "239": {
+    "inputs": {
+      "input_id": "input_text",
+      "default_value": "xelios it",
+      "display_name": "prompt",
+      "description": ""
+    },
+    "class_type": "ComfyUIDeployExternalText",
+    "_meta": {
+      "title": "External Text (ComfyUI Deploy)"
+    }
+  },
+  "240": {
+    "inputs": {
+      "input_id": "input_images",
+      "images": "[]",
+      "display_name": "",
+      "description": "",
+      "default_value": [
+        "237",
+        0
+      ]
+    },
+    "class_type": "ComfyUIDeployExternalImageBatch",
+    "_meta": {
+      "title": "External Image Batch (ComfyUI Deploy)"
+    }
+  },
+  "242": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "file_type": "png",
+      "quality": 100,
+      "output_id": "output_images",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "ComfyDeployOutputImage",
+    "_meta": {
+      "title": "Image Output (ComfyDeploy)"
+    }
+  },
+  "243": {
+    "inputs": {
+      "input_id": "input_repeats",
+      "default_value": 2,
+      "display_name": "",
+      "description": ""
+    },
+    "class_type": "ComfyUIDeployExternalNumberInt",
+    "_meta": {
+      "title": "External Number Int (ComfyUI Deploy)"
+    }
+  },
+  "244": {
+    "inputs": {
+      "input_id": "input_seed",
+      "default_value": -1,
+      "min_value": 1,
+      "max_value": 4294967295,
+      "display_name": "",
+      "description": "For default value:\n\"-1\" (i.e. not in range): Randomize within the min and max value range. \nin range: Fixed, always the same value\n"
+    },
+    "class_type": "ComfyUIDeployExternalSeed",
+    "_meta": {
+      "title": "External Seed (ComfyUI Deploy)"
+    }
+  },
+  "246": {
+    "inputs": {
+      "input_id": "input_steps",
+      "default_value": 30,
+      "display_name": "",
+      "description": ""
+    },
+    "class_type": "ComfyUIDeployExternalNumberInt",
+    "_meta": {
+      "title": "External Number Int (ComfyUI Deploy)"
+    }
+  },
+  "247": {
+    "inputs": {
+      "input_id": "input_cfg",
+      "default_value": 1,
+      "display_name": "",
+      "description": ""
+    },
+    "class_type": "ComfyUIDeployExternalNumber",
+    "_meta": {
+      "title": "External Number (ComfyUI Deploy)"
+    }
+  }
+}
