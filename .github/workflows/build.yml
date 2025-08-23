@@ -34,6 +34,9 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Setup Build Environment
         uses: ./.github/actions/setup-build-env
         with:
@@ -64,6 +67,9 @@ jobs:
       matrix:
         gpu: [rtx4090, rtx5090]
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Should build this GPU base?
         id: should-build
         run: |
@@ -111,11 +117,11 @@ jobs:
             gpu: rtx4090
           - template: sd15-basic
             gpu: rtx5090
-          - template: story-processing
-            gpu: rtx4090
-          - template: story-processing
-            gpu: rtx5090
+
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Should build this template?
         id: should-build
         run: |
