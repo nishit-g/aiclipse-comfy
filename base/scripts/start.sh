@@ -164,7 +164,7 @@ EOF
 start_comfyui_with_custom_args() {
     cd "$COMFY_DIR"
 
-    setup_custom_args
+    # setup_custom_args
 
     # Base arguments
     local args="--listen 0.0.0.0 --port 8188"
@@ -174,14 +174,9 @@ start_comfyui_with_custom_args() {
         args="$args --use-sage-attention"
     fi
 
-    # Add custom arguments
-    local custom_args_file="/workspace/aiclipse/comfyui_args.txt"
-    if [ -f "$custom_args_file" ]; then
-        local custom_args=$(grep -v '^#' "$custom_args_file" | grep -v '^$' | tr '\n' ' ')
-        if [ -n "$custom_args" ]; then
-            args="$args $custom_args"
-            log "📝 Using custom args: $custom_args"
-        fi
+    if [ -n "$COMFY_ARGS" ]; then
+        args="$args $COMFY_ARGS"
+        log "🔍 Using COMFY_ARGS env: $COMFY_ARGS"
     fi
 
     log "🎨 Starting ComfyUI with: $args"

@@ -42,4 +42,4 @@ https://github.com/ltdrdata/ComfyUI-Impact-Pack|main|segmentation|Advanced segme
 # https://github.com/city96/ComfyUI-GGUF|main|quantization|GGUF model support
 
 # Core plugin for connecting to the Comfy Deploy Platform
-https://github.com/BennyKok/comfyui-deploy.git|main|plugin|Comfy Deploy Platform Connector
+https://github.com/BennyKok/comfyui-deploy|main|plugin|Comfy Deploy Platform Connector
