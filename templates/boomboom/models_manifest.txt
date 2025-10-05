@@ -33,3 +33,5 @@ huggingface|comfyanonymous/flux_text_encoders|t5xxl_fp16.safetensors|text_encode
 huggingface|comfyanonymous/flux_text_encoders|t5xxl_fp8_e4m3fn.safetensors|text_encoders
 
 r2|loras/v9_xelios_it.safetensors|v9_xelios_it.safetensors|loras
+r2|loras/v12_xelios_it.safetensors|v12_xelios_it.safetensors|loras
+r2|loras/v12_xelios_it_5250.safetensors|v12_xelios_it_5250.safetensors|loras
