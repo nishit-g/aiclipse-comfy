@@ -26,6 +26,7 @@ on:
           - 'boomboom-rtx5090'
           - 'sd15-basic-rtx4090'
           - 'sd15-basic-rtx5090'
+          - 'qwen-multi-edit-rtx5090'
       force_rebuild:
         description: 'Force rebuild (ignore cache)'
         required: false
@@ -47,6 +48,7 @@ jobs:
       should-build-boomboom: ${{ steps.check.outputs.should-build-boomboom }}
       should-build-sd15-4090: ${{ steps.check.outputs.should-build-sd15-4090 }}
       should-build-sd15-5090: ${{ steps.check.outputs.should-build-sd15-5090 }}
+      should-build-qwen-multi-edit: ${{ steps.check.outputs.should-build-qwen-multi-edit }}
     steps:
       - name: Checkout (lightweight)
         uses: actions/checkout@v4
@@ -61,6 +63,7 @@ jobs:
           BASE_CHANGED="false"
           BOOMBOOM_CHANGED="false"
           SD15_CHANGED="false"
+          QWEN_MULTI_EDIT_CHANGED="false"
 
           if git diff --name-only HEAD^ HEAD | grep -E '^(base/|manifests/base_nodes.txt|docker-bake.hcl)'; then
             BASE_CHANGED="true"
@@ -77,9 +80,15 @@ jobs:
             echo "🎨 SD15-basic template changed"
           fi
 
+          if git diff --name-only HEAD^ HEAD | grep '^templates/qwen-multi-edit/'; then
+            QWEN_MULTI_EDIT_CHANGED="true"
+            echo "🎨 Qwen Multi-Edit template changed"
+          fi
+
           echo "base-changed=$BASE_CHANGED" >> $GITHUB_OUTPUT
           echo "boomboom-changed=$BOOMBOOM_CHANGED" >> $GITHUB_OUTPUT
           echo "sd15-changed=$SD15_CHANGED" >> $GITHUB_OUTPUT
+          echo "qwen-multi-edit-changed=$QWEN_MULTI_EDIT_CHANGED" >> $GITHUB_OUTPUT
 
       - name: Determine what to build
         id: check
@@ -88,6 +97,7 @@ jobs:
           BASE_CHANGED="${{ steps.files.outputs.base-changed || 'false' }}"
           BOOMBOOM_CHANGED="${{ steps.files.outputs.boomboom-changed || 'false' }}"
           SD15_CHANGED="${{ steps.files.outputs.sd15-changed || 'false' }}"
+          QWEN_MULTI_EDIT_CHANGED="${{ steps.files.outputs.qwen-multi-edit-changed || 'false' }}"
 
           # Initialize all to false (CRITICAL: no quotes around false)
           BUILD_BASE_COMMON=false
@@ -96,6 +106,7 @@ jobs:
           BUILD_BOOMBOOM=false
           BUILD_SD15_4090=false
           BUILD_SD15_5090=false
+          BUILD_QWEN_MULTI_EDIT=false
 
           echo "📋 Build target: $BUILD_TARGET"
           echo "📁 Changes: base=$BASE_CHANGED, boomboom=$BOOMBOOM_CHANGED, sd15=$SD15_CHANGED"
@@ -108,6 +119,7 @@ jobs:
               BUILD_BOOMBOOM=true
               BUILD_SD15_4090=false
               BUILD_SD15_5090=false
+              BUILD_QWEN_MULTI_EDIT=true
               echo "🔄 Building everything"
               ;;
             "base-common")
@@ -131,6 +143,10 @@ jobs:
               BUILD_BASE_RTX5090=true
               BUILD_SD15_5090=true
               ;;
+            "qwen-multi-edit-rtx5090")
+              BUILD_BASE_RTX5090=true
+              BUILD_QWEN_MULTI_EDIT=true
+              ;;
             "changed-files")
               if [[ "$BASE_CHANGED" == "true" ]]; then
                 # Base changed - rebuild everything
@@ -140,6 +156,7 @@ jobs:
                 BUILD_BOOMBOOM=true
                 BUILD_SD15_4090=false
                 BUILD_SD15_5090=false
+                BUILD_QWEN_MULTI_EDIT=true
                 echo "🔥 Base changed - rebuilding all"
               else
                 # Only templates changed
@@ -152,6 +169,10 @@ jobs:
                   BUILD_SD15_5090=true
                   echo "🎨 Only sd15-basic changed"
                 fi
+                if [[ "$QWEN_MULTI_EDIT_CHANGED" == "true" ]]; then
+                  BUILD_QWEN_MULTI_EDIT=true
+                  echo "🎨 Only qwen-multi-edit changed"
+                fi
               fi
               ;;
           esac
@@ -163,6 +184,7 @@ jobs:
           echo "should-build-boomboom=$BUILD_BOOMBOOM" >> $GITHUB_OUTPUT
           echo "should-build-sd15-4090=$BUILD_SD15_4090" >> $GITHUB_OUTPUT
           echo "should-build-sd15-5090=$BUILD_SD15_5090" >> $GITHUB_OUTPUT
+          echo "should-build-qwen-multi-edit=$BUILD_QWEN_MULTI_EDIT" >> $GITHUB_OUTPUT
 
           echo "🎯 Final build plan:"
           echo "  base-common: $BUILD_BASE_COMMON"
@@ -171,6 +193,7 @@ jobs:
           echo "  boomboom: $BUILD_BOOMBOOM"
           echo "  sd15-4090: $BUILD_SD15_4090"
           echo "  sd15-5090: $BUILD_SD15_5090"
+          echo "  qwen-multi-edit: $BUILD_QWEN_MULTI_EDIT"
 
   # ✅ BULLETPROOF: Job-level condition prevents job from starting
   build-base-common:
@@ -328,10 +351,50 @@ jobs:
           fi
           docker buildx bake boomboom-rtx5090 --push $EXTRA_ARGS
 
+  # ✅ Qwen Multi-Edit template
+  build-qwen-multi-edit:
+    runs-on: ubuntu-latest
+    needs: [determine-builds, build-base-rtx5090]
+    if: |
+      always() &&
+      !cancelled() &&
+      needs.determine-builds.outputs.should-build-qwen-multi-edit == 'true' &&
+      (needs.build-base-rtx5090.result == 'success' || needs.build-base-rtx5090.result == 'skipped')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Free up disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push qwen-multi-edit-rtx5090
+        run: |
+          EXTRA_ARGS=""
+          if [ "${{ inputs.force_rebuild }}" = "true" ]; then
+            EXTRA_ARGS="--no-cache"
+          fi
+          docker buildx bake qwen-multi-edit-rtx5090 --push $EXTRA_ARGS
+
   # ✅ Summary job
   build-summary:
     runs-on: ubuntu-latest
-    needs: [determine-builds, build-base-common, build-base-rtx4090, build-base-rtx5090, build-boomboom]
+    needs: [determine-builds, build-base-common, build-base-rtx4090, build-base-rtx5090, build-boomboom, build-qwen-multi-edit]
     if: always()
     steps:
       - name: Build Summary
@@ -345,3 +408,4 @@ jobs:
           echo "- build-base-rtx4090: ${{ needs.build-base-rtx4090.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- build-base-rtx5090: ${{ needs.build-base-rtx5090.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- build-boomboom: ${{ needs.build-boomboom.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- build-qwen-multi-edit: ${{ needs.build-qwen-multi-edit.result }}" >> $GITHUB_STEP_SUMMARY
