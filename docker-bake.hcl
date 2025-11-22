@@ -99,6 +99,19 @@ target "boomboom-rtx5090" {
   }
 }
 
+target "qwen-multi-edit-rtx5090" {
+  inherits = ["_common"]
+  dockerfile = "Dockerfile"
+  context = "templates/qwen-multi-edit"
+  tags = ["${REGISTRY}/aiclipse-qwen-multi-edit:rtx5090-${VERSION}"]
+  # FIXED: Specific cache scope for qwen-multi-edit-rtx5090
+  cache-from = ["type=registry,ref=${REGISTRY}/aiclipse-qwen-multi-edit:rtx5090-cache"]
+  cache-to = ["type=registry,ref=${REGISTRY}/aiclipse-qwen-multi-edit:rtx5090-cache,mode=max"]
+  args = {
+    BASE_IMAGE = "${REGISTRY}/aiclipse-base-rtx5090:${VERSION}"
+  }
+}
+
 # Build groups (unchanged)
 group "bases" {
   targets = ["base-common", "base-rtx4090", "base-rtx5090"]
@@ -112,6 +125,10 @@ group "boomboom" {
   targets = ["boomboom-rtx5090"]
 }
 
+group "qwen-multi-edit" {
+  targets = ["qwen-multi-edit-rtx5090"]
+}
+
 group "all" {
-  targets = ["base-common", "base-rtx4090", "base-rtx5090", "sd15-basic-rtx4090", "sd15-basic-rtx5090", "boomboom-rtx5090"]
+  targets = ["base-common", "base-rtx4090", "base-rtx5090", "sd15-basic-rtx4090", "sd15-basic-rtx5090", "boomboom-rtx5090", "qwen-multi-edit-rtx5090"]
 }

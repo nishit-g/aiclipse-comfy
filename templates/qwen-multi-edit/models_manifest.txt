@@ -1,0 +1,4 @@
+Comfy-Org/Qwen-Image-Edit_ComfyUI|qwen_image_edit_2509_fp8_e4m3fn.safetensors|diffusion_models
+Comfy-Org/Qwen-Image-Edit_ComfyUI|qwen_image_vae.safetensors|vae
+Comfy-Org/Qwen-Image-Edit_ComfyUI|qwen_2.5_vl_7b_fp8_scaled.safetensors|text_encoders
+Comfy-Org/Qwen-Image-Edit_ComfyUI|Qwen-Image-Edit-Lightning-4steps-V1.0.safetensors|loras
