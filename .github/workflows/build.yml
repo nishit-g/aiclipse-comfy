@@ -63,16 +63,32 @@ jobs:
         if: github.event_name == 'push'
         run: |
           # Check what changed
-          BASE_CHANGED="false"
+          BASE_COMMON_CHANGED="false"
+          BASE_4090_CHANGED="false"
+          BASE_5090_CHANGED="false"
           BOOMBOOM_CHANGED="false"
           SD15_CHANGED="false"
           QWEN_MULTI_EDIT_CHANGED="false"
 
-          if git diff --name-only HEAD^ HEAD | grep -E '^(base/|manifests/base_nodes.txt|docker-bake.hcl)'; then
-            BASE_CHANGED="true"
-            echo "🔥 Base files changed"
+          # 1. Check Base Common (Affects everything)
+          if git diff --name-only HEAD^ HEAD | grep -E '^(base/common.dockerfile|manifests/base_nodes.txt|docker-bake.hcl)'; then
+            BASE_COMMON_CHANGED="true"
+            echo "🔥 Base Common changed (Rebuild All)"
           fi
 
+          # 2. Check Base RTX 4090
+          if git diff --name-only HEAD^ HEAD | grep '^base/rtx4090.dockerfile'; then
+            BASE_4090_CHANGED="true"
+            echo "🔥 Base RTX 4090 changed"
+          fi
+
+          # 3. Check Base RTX 5090
+          if git diff --name-only HEAD^ HEAD | grep '^base/rtx5090.dockerfile'; then
+            BASE_5090_CHANGED="true"
+            echo "🔥 Base RTX 5090 changed"
+          fi
+
+          # 4. Check Templates
           if git diff --name-only HEAD^ HEAD | grep '^templates/boomboom/'; then
             BOOMBOOM_CHANGED="true"
             echo "🎨 Boomboom template changed"
@@ -88,7 +104,9 @@ jobs:
             echo "🎨 Qwen Multi-Edit template changed"
           fi
 
-          echo "base-changed=$BASE_CHANGED" >> $GITHUB_OUTPUT
+          echo "base-common-changed=$BASE_COMMON_CHANGED" >> $GITHUB_OUTPUT
+          echo "base-4090-changed=$BASE_4090_CHANGED" >> $GITHUB_OUTPUT
+          echo "base-5090-changed=$BASE_5090_CHANGED" >> $GITHUB_OUTPUT
           echo "boomboom-changed=$BOOMBOOM_CHANGED" >> $GITHUB_OUTPUT
           echo "sd15-changed=$SD15_CHANGED" >> $GITHUB_OUTPUT
           echo "qwen-multi-edit-changed=$QWEN_MULTI_EDIT_CHANGED" >> $GITHUB_OUTPUT
@@ -97,12 +115,14 @@ jobs:
         id: check
         run: |
           BUILD_TARGET="${{ inputs.build_target || 'changed-files' }}"
-          BASE_CHANGED="${{ steps.files.outputs.base-changed || 'false' }}"
+          BASE_COMMON_CHANGED="${{ steps.files.outputs.base-common-changed || 'false' }}"
+          BASE_4090_CHANGED="${{ steps.files.outputs.base-4090-changed || 'false' }}"
+          BASE_5090_CHANGED="${{ steps.files.outputs.base-5090-changed || 'false' }}"
           BOOMBOOM_CHANGED="${{ steps.files.outputs.boomboom-changed || 'false' }}"
           SD15_CHANGED="${{ steps.files.outputs.sd15-changed || 'false' }}"
           QWEN_MULTI_EDIT_CHANGED="${{ steps.files.outputs.qwen-multi-edit-changed || 'false' }}"
 
-          # Initialize all to false (CRITICAL: no quotes around false)
+          # Initialize all to false
           BUILD_BASE_COMMON=false
           BUILD_BASE_RTX4090=false
           BUILD_BASE_RTX5090=false
@@ -112,7 +132,6 @@ jobs:
           BUILD_QWEN_MULTI_EDIT=false
 
           echo "📋 Build target: $BUILD_TARGET"
-          echo "📁 Changes: base=$BASE_CHANGED, boomboom=$BOOMBOOM_CHANGED, sd15=$SD15_CHANGED"
 
           case "$BUILD_TARGET" in
             "all")
@@ -151,8 +170,8 @@ jobs:
               BUILD_QWEN_MULTI_EDIT=true
               ;;
             "changed-files")
-              if [[ "$BASE_CHANGED" == "true" ]]; then
-                # Base changed - rebuild everything
+              # 1. Base Common Changed -> Rebuild EVERYTHING
+              if [[ "$BASE_COMMON_CHANGED" == "true" ]]; then
                 BUILD_BASE_COMMON=true
                 BUILD_BASE_RTX4090=true
                 BUILD_BASE_RTX5090=true
@@ -160,21 +179,34 @@ jobs:
                 BUILD_SD15_4090=false
                 BUILD_SD15_5090=false
                 BUILD_QWEN_MULTI_EDIT=true
-                echo "🔥 Base changed - rebuilding all"
+                echo "🔥 Base Common changed - rebuilding all"
               else
-                # Only templates changed
+                # 2. Base RTX 4090 Changed -> Rebuild 4090 stack
+                if [[ "$BASE_4090_CHANGED" == "true" ]]; then
+                  BUILD_BASE_RTX4090=true
+                  BUILD_SD15_4090=true
+                  echo "🔥 Base RTX 4090 changed - rebuilding 4090 stack"
+                fi
+
+                # 3. Base RTX 5090 Changed -> Rebuild 5090 stack
+                if [[ "$BASE_5090_CHANGED" == "true" ]]; then
+                  BUILD_BASE_RTX5090=true
+                  BUILD_BOOMBOOM=true
+                  BUILD_SD15_5090=false
+                  BUILD_QWEN_MULTI_EDIT=true
+                  echo "🔥 Base RTX 5090 changed - rebuilding 5090 stack"
+                fi
+
+                # 4. Templates Changed (if base didn't force them already)
                 if [[ "$BOOMBOOM_CHANGED" == "true" ]]; then
                   BUILD_BOOMBOOM=true
-                  echo "🎨 Only boomboom changed"
                 fi
                 if [[ "$SD15_CHANGED" == "true" ]]; then
                   BUILD_SD15_4090=true
                   BUILD_SD15_5090=true
-                  echo "🎨 Only sd15-basic changed"
                 fi
                 if [[ "$QWEN_MULTI_EDIT_CHANGED" == "true" ]]; then
                   BUILD_QWEN_MULTI_EDIT=true
-                  echo "🎨 Only qwen-multi-edit changed"
                 fi
               fi
               ;;

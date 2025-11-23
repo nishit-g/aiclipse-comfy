@@ -25,7 +25,7 @@ RUN /venv/bin/pip install --no-cache-dir \
 RUN /venv/bin/pip install --no-cache-dir \
     xformers=="${XFORMERS_VERSION}" --index-url ${TORCH_INDEX}
 
-RUN /venv/bin/pip install --no-cache-dir \
+RUN /venv/bin/pip install --no-cache-dir --no-build-isolation \
     triton ninja sageattention
 
 # Copy all setup scripts
