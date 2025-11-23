@@ -38,6 +38,7 @@ on:
 env:
   REGISTRY: ghcr.io/${{ github.repository_owner }}
   VERSION: ${{ github.ref_name || 'latest' }}
+  CACHE_TYPE: gha
 
 jobs:
   # ✅ SAFE: Always runs, determines what to build
