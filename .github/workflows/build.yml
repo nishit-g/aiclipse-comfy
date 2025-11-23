@@ -207,16 +207,14 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
+      - name: ⚡ Fast Disk Cleanup
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/lib/node_modules
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -247,16 +245,14 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
+      - name: ⚡ Fast Disk Cleanup
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/lib/node_modules
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -287,16 +283,14 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
+      - name: ⚡ Fast Disk Cleanup
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/lib/node_modules
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -327,16 +321,14 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
+      - name: ⚡ Fast Disk Cleanup
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/lib/node_modules
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -367,16 +359,14 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
+      - name: ⚡ Fast Disk Cleanup
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/lib/node_modules
 
       - name: Checkout repository
         uses: actions/checkout@v4
