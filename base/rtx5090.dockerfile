@@ -7,7 +7,7 @@ ENV TORCH_INDEX="https://download.pytorch.org/whl/cu128"
 ENV TORCH_VERSION="2.8.0+cu128"
 ENV XFORMERS_VERSION="0.0.32.post1"
 ENV ENABLE_SAGE_ATTENTION=true
-ENV TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0;10.0+PTX"
+ENV TORCH_CUDA_ARCH_LIST="10.0+PTX"
 
 # Upgrade to CUDA 12.8.0 for RTX 5090
 RUN apt-get update && \
