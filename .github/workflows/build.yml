@@ -9,6 +9,8 @@ on:
       - 'base/**'
       - 'templates/**'
       - 'docker-bake.hcl'
+      - '!base/scripts/**'
+      - '!manifests/**'
 
   workflow_dispatch:
     inputs:

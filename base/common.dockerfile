@@ -20,10 +20,7 @@ RUN apt-get update && apt-get upgrade -y && \
     && rm -rf /var/lib/apt/lists/*
 
 # Install modern tools
-RUN curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
-RUN wget https://github.com/zasper-io/zasper/releases/download/v0.1.0-alpha/zasper-webapp-linux-amd64.tar.gz && \
-    tar xf zasper-webapp-linux-amd64.tar.gz -C /usr/local/bin && \
-    rm zasper-webapp-linux-amd64.tar.gz
+# FileBrowser and Zasper removed for lean build
 
 # Python setup with base virtual environment
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \

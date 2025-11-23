@@ -1,116 +1,33 @@
 #!/bin/bash
-# Enhanced Model Setup Script with R2 and CivitAI support
+# Enhanced Model Setup Script with Aria2c Parallel Downloads
 
 setup_model_paths() {
-    log "🎯 Configuring ComfyUI model paths..."
+    log_info "Configuring ComfyUI model paths..."
 
     # Create extra_model_paths.yaml with enhanced structure
     cat > "$COMFY_DIR/extra_model_paths.yaml" << 'YAML'
-models:
-  checkpoints: /workspace/aiclipse/models/checkpoints
-  diffusion_models: /workspace/aiclipse/models/diffusion_models
-  text_encoders: /workspace/aiclipse/models/text_encoders
-  unet: /workspace/aiclipse/models/unet
-  vae: /workspace/aiclipse/models/vae
-  loras: /workspace/aiclipse/models/loras
-  clip: /workspace/aiclipse/models/clip
-  controlnet: /workspace/aiclipse/models/controlnet
-  upscale_models: /workspace/aiclipse/models/upscale_models
-  embeddings: /workspace/aiclipse/models/embeddings
-  hypernetworks: /workspace/aiclipse/models/hypernetworks
-  t2i_adapter: /workspace/aiclipse/models/t2i_adapter
-  clip_vision: /workspace/aiclipse/models/clip_vision
-  style_models: /workspace/aiclipse/models/style_models
-  photomaker: /workspace/aiclipse/models/photomaker
+comfyui:
+    base_path: /workspace/aiclipse/ComfyUI
+    checkpoints: /workspace/aiclipse/models/checkpoints
+    clip: /workspace/aiclipse/models/clip
+    clip_vision: /workspace/aiclipse/models/clip_vision
+    configs: /workspace/aiclipse/models/configs
+    controlnet: /workspace/aiclipse/models/controlnet
+    embeddings: /workspace/aiclipse/models/embeddings
+    loras: /workspace/aiclipse/models/loras
+    upscale_models: /workspace/aiclipse/models/upscale_models
+    vae: /workspace/aiclipse/models/vae
+    hypernetworks: /workspace/aiclipse/models/hypernetworks
+    photomaker: /workspace/aiclipse/models/photomaker
+    classifiers: /workspace/aiclipse/models/classifiers
+    style_models: /workspace/aiclipse/models/style_models
+    diffusers: /workspace/aiclipse/models/diffusers
+    text_encoders: /workspace/aiclipse/models/text_encoders
+    gligen: /workspace/aiclipse/models/gligen
+    esrgan: /workspace/aiclipse/models/esrgan
 YAML
 
-    log "✅ Enhanced model paths configured"
-}
-
-check_enhanced_dependencies() {
-    log "🔍 Checking enhanced downloader dependencies..."
-
-    # Check for boto3 (R2 support)
-    if ! /venv/bin/python -c "import boto3" 2>/dev/null; then
-        log "📦 Installing boto3 for R2 support..."
-        /venv/bin/pip install --no-cache-dir boto3 botocore
-    else
-        log "✅ boto3 available for R2 support"
-    fi
-
-    # Check for requests with security features
-    if ! /venv/bin/python -c "import requests; import urllib3" 2>/dev/null; then
-        log "📦 Installing enhanced requests..."
-        /venv/bin/pip install --no-cache-dir "requests[security]" urllib3
-    else
-        log "✅ Enhanced requests available"
-    fi
-
-    log "✅ All dependencies available"
-}
-
-validate_credentials() {
-    log "🔐 Validating download credentials..."
-
-    local has_credentials=false
-
-    # Check HuggingFace token
-    if [ -n "$HF_TOKEN" ]; then
-        log "✅ HuggingFace token configured"
-        has_credentials=true
-    else
-        log "ℹ️ No HuggingFace token (public models only)"
-    fi
-
-    # Check CivitAI token
-    if [ -n "$CIVITAI_TOKEN" ] || [ -n "$CIVITAI_API_KEY" ]; then
-        log "✅ CivitAI token configured"
-        has_credentials=true
-    else
-        log "ℹ️ No CivitAI token (public models only, may hit rate limits)"
-    fi
-
-    # Check R2 credentials
-    if [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_SECRET_ACCESS_KEY" ] && [ -n "$R2_ACCOUNT_ID" ]; then
-        log "✅ Cloudflare R2 credentials configured"
-        if [ -n "$R2_BUCKET" ]; then
-            log "✅ Default R2 bucket: $R2_BUCKET"
-        fi
-        has_credentials=true
-    else
-        log "ℹ️ No R2 credentials (R2 models will be skipped)"
-    fi
-
-    if [ "$has_credentials" = false ]; then
-        log "⚠️ No enhanced credentials configured - only public HuggingFace models available"
-    fi
-}
-
-test_connections() {
-    log "🌐 Testing download service connections..."
-
-    # Test HuggingFace
-    if timeout 10 curl -s "https://huggingface.co" > /dev/null; then
-        log "✅ HuggingFace Hub accessible"
-    else
-        log "⚠️ HuggingFace Hub connection issue"
-    fi
-
-    # Test CivitAI
-    if timeout 10 curl -s "https://civitai.com/api/v1/models" > /dev/null; then
-        log "✅ CivitAI API accessible"
-    else
-        log "⚠️ CivitAI API connection issue"
-    fi
-
-    # Test R2 if configured
-    if [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_SECRET_ACCESS_KEY" ] && [ -n "$R2_ACCOUNT_ID" ]; then
-        if timeout 10 curl -s "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" > /dev/null; then
-            log "✅ Cloudflare R2 accessible"
-        else
-            log "⚠️ Cloudflare R2 connection issue"
-        fi
-    fi
+    log_success "Enhanced model paths configured"
 }
 
 setup_manifest() {
@@ -122,198 +39,129 @@ setup_manifest() {
         local template_manifest="/manifests/${TEMPLATE_TYPE}_models.txt"
         if [ -f "$template_manifest" ]; then
             cp "$template_manifest" "$manifest_file"
-            log "📋 Using template manifest: ${TEMPLATE_TYPE}"
+            log_info "Using template manifest: ${TEMPLATE_TYPE}"
         # Fallback to environment variable
         elif [ -n "$MODELS_MANIFEST" ] && [ -f "$MODELS_MANIFEST" ]; then
             cp "$MODELS_MANIFEST" "$manifest_file"
-            log "📋 Using environment manifest: $MODELS_MANIFEST"
+            log_info "Using environment manifest: $MODELS_MANIFEST"
         # Fallback to base manifest
         elif [ -f "/manifests/base_models.txt" ]; then
             cp "/manifests/base_models.txt" "$manifest_file"
-            log "📋 Using base models manifest"
+            log_info "Using base models manifest"
         else
-            log "ℹ️ No model manifest found - will start with empty models directory"
-            return 0
+            log_warn "No model manifest found - will start with empty models directory"
+            return 1
         fi
     else
-        log "📋 Using existing manifest: $manifest_file"
+        log_info "Using existing manifest: $manifest_file"
     fi
-
-    # Validate manifest before proceeding
-    log "🔍 Validating manifest syntax..."
-    if /venv/bin/python /scripts/download_models.py \
-        --manifest "$manifest_file" \
-        --models-dir "$MODELS_DIR" \
-        --validate-only; then
-        log "✅ Manifest validation passed"
-    else
-        log_error "❌ Manifest validation failed - check syntax"
-        return 1
-    fi
-
     return 0
+}
+
+generate_aria2_input() {
+    local manifest_file="$1"
+    local input_file="$2"
+    
+    rm -f "$input_file"
+    
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip comments and empty lines
+        [[ $line =~ ^[[:space:]]*# ]] && continue
+        [[ -z "$line" ]] && continue
+        
+        # Parse line: source|identifier|filename|subdir[|checksum]
+        IFS='|' read -r source identifier filename subdir checksum <<< "$line"
+        
+        source=$(echo "$source" | tr '[:upper:]' '[:lower:]' | xargs)
+        identifier=$(echo "$identifier" | xargs)
+        filename=$(echo "$filename" | xargs)
+        subdir=$(echo "$subdir" | xargs)
+        
+        local url=""
+        local header=""
+        
+        case "$source" in
+            "huggingface"|"hf")
+                url="https://huggingface.co/${identifier}/resolve/main/${filename}"
+                if [ -n "$HF_TOKEN" ]; then
+                    header="Authorization: Bearer $HF_TOKEN"
+                fi
+                ;;
+            "civitai")
+                url="https://civitai.com/api/download/models/${identifier}"
+                if [ -n "$CIVITAI_TOKEN" ]; then
+                    header="Authorization: Bearer $CIVITAI_TOKEN"
+                fi
+                ;;
+            "url"|"direct")
+                url="$identifier"
+                ;;
+            *)
+                log_warn "Unknown source: $source for $filename"
+                continue
+                ;;
+        esac
+        
+        if [ -n "$url" ]; then
+            echo "$url" >> "$input_file"
+            echo "  out=$filename" >> "$input_file"
+            echo "  dir=/workspace/aiclipse/models/$subdir" >> "$input_file"
+            if [ -n "$header" ]; then
+                echo "  header=$header" >> "$input_file"
+            fi
+        fi
+        
+    done < "$manifest_file"
 }
 
 download_models_enhanced() {
     local manifest_file="/workspace/aiclipse/models_manifest.txt"
-
-    # Skip if downloads disabled
+    local aria2_input="/workspace/aiclipse/aria2_input.txt"
+    
     if [ "$DOWNLOAD_MODELS" != "true" ]; then
-        log "⭐ Model downloads disabled (DOWNLOAD_MODELS=false)"
+        log_info "Model downloads disabled (DOWNLOAD_MODELS=false)"
         return 0
     fi
-
+    
     if ! setup_manifest; then
-        log "ℹ️ No models to download"
         return 0
     fi
-
-    if [ ! -f "$manifest_file" ]; then
-        log "ℹ️ No models to download"
+    
+    log_info "Generating download list..."
+    generate_aria2_input "$manifest_file" "$aria2_input"
+    
+    if [ ! -s "$aria2_input" ]; then
+        log_info "No valid downloads found in manifest."
         return 0
     fi
-
-    # Check dependencies
-    check_enhanced_dependencies
-
-    # Validate credentials
-    validate_credentials
-
-    # Test connections
-    test_connections
-
-    log "🔥 Starting enhanced model downloads..."
-
-    # Ensure logs directory exists
-    mkdir -p /workspace/aiclipse/logs
-
-    # Start enhanced download with better error handling and logging
-    if [ "$DOWNLOAD_IN_FOREGROUND" = "true" ]; then
-        # Foreground download (for debugging)
-        log "🔄 Downloading models in foreground..."
-        /venv/bin/python /scripts/download_models.py \
-            --manifest "$manifest_file" \
-            --models-dir "$MODELS_DIR" \
-            2>&1 | tee /workspace/aiclipse/logs/models.log
-
-        local exit_code=${PIPESTATUS[0]}
-        if [ $exit_code -eq 0 ]; then
-            log "✅ All models downloaded successfully"
-        else
-            log_error "❌ Some model downloads failed (exit code: $exit_code)"
-        fi
-
+    
+    log_info "🔥 Starting high-performance parallel downloads..."
+    
+    # Aria2c options:
+    # -x 16: 16 connections per server
+    # -s 16: 16 connections per file
+    # -j 10: 10 parallel downloads
+    # -c: Continue
+    # --summary-interval=0: Reduce log noise
+    
+    if aria2c -i "$aria2_input" \
+        -x 16 -s 16 -j 10 \
+        -c --auto-file-renaming=false \
+        --console-log-level=warn \
+        --summary-interval=30; then
+        log_success "All models downloaded successfully"
     else
-        # Background download (default)
-        log "🔄 Starting model downloads in background..."
-        nohup /venv/bin/python /scripts/download_models.py \
-            --manifest "$manifest_file" \
-            --models-dir "$MODELS_DIR" \
-            > /workspace/aiclipse/logs/models.log 2>&1 &
-
-        local download_pid=$!
-        echo $download_pid > /workspace/aiclipse/logs/models.pid
-
-        log "📊 Download progress: tail -f /workspace/aiclipse/logs/models.log"
-        log "🔢 Download PID: $download_pid"
-
-        # Show initial progress
-        sleep 2
-        if ps -p $download_pid > /dev/null; then
-            log "✅ Model download process started successfully"
-            # Show first few lines of log
-            if [ -f /workspace/aiclipse/logs/models.log ]; then
-                tail -n 5 /workspace/aiclipse/logs/models.log 2>/dev/null || true
-            fi
-        else
-            log_error "❌ Model download process failed to start"
-            if [ -f /workspace/aiclipse/logs/models.log ]; then
-                log_error "Last log entries:"
-                tail -n 10 /workspace/aiclipse/logs/models.log 2>/dev/null || true
-            fi
-        fi
+        log_error "Some downloads failed"
     fi
+    
+    rm -f "$aria2_input"
 }
 
-monitor_downloads() {
-    log "📡 Setting up download monitoring..."
-
-    # Create monitoring script
-    cat > /scripts/monitor_downloads.sh << 'EOF'
-#!/bin/bash
-# Download monitoring helper
-
-PID_FILE="/workspace/aiclipse/logs/models.pid"
-LOG_FILE="/workspace/aiclipse/logs/models.log"
-
-if [ -f "$PID_FILE" ]; then
-    PID=$(cat "$PID_FILE")
-    if ps -p $PID > /dev/null 2>&1; then
-        echo "✅ Download process $PID is running"
-        echo "📊 Recent progress:"
-        tail -n 5 "$LOG_FILE" 2>/dev/null || echo "No logs yet"
-    else
-        echo "⚠️ Download process completed or failed"
-        if [ -f "$LOG_FILE" ]; then
-            echo "📋 Final status:"
-            grep -E "(success|error|complete)" "$LOG_FILE" | tail -n 3
-        fi
-        rm -f "$PID_FILE"
-    fi
-else
-    echo "ℹ️ No active download process"
-fi
-EOF
-
-    chmod +x /scripts/monitor_downloads.sh
-
-    # Create download status command
-    cat > /scripts/download_status.sh << 'EOF'
-#!/bin/bash
-# Quick download status check
-
-LOG_FILE="/workspace/aiclipse/logs/models.log"
-
-if [ -f "$LOG_FILE" ]; then
-    echo "📊 Download Summary:"
-    grep -c "Downloaded:" "$LOG_FILE" 2>/dev/null | xargs -I {} echo "✅ Successfully downloaded: {} files"
-    grep -c "ERROR" "$LOG_FILE" 2>/dev/null | xargs -I {} echo "❌ Failed downloads: {} files"
-    grep -c "Skipping" "$LOG_FILE" 2>/dev/null | xargs -I {} echo "⭐ Skipped (existing): {} files"
-
-    echo ""
-    echo "🌐 Sources used:"
-    grep -o "Downloading.*from [A-Z]*" "$LOG_FILE" 2>/dev/null | sed 's/.*from //' | sort | uniq -c
-
-    echo ""
-    echo "📝 Recent activity (last 3 lines):"
-    tail -n 3 "$LOG_FILE" 2>/dev/null || echo "No recent activity"
-else
-    echo "ℹ️ No download logs found"
-fi
-EOF
-
-    chmod +x /scripts/download_status.sh
-
-    log "✅ Download monitoring tools installed"
-    log "🔧 Use: /scripts/monitor_downloads.sh"
-    log "🔧 Use: /scripts/download_status.sh"
-}
-
-# Main enhanced model setup function
 download_models_async() {
-    log "🚀 Enhanced model management system starting..."
-
-    # Setup monitoring tools
-    monitor_downloads
-
-    # Run enhanced download
-    download_models_enhanced
-
-    log "🎯 Enhanced model setup complete"
-    log ""
-    log "📖 Quick commands:"
-    log "  Monitor: /scripts/monitor_downloads.sh"
-    log "  Status:  /scripts/download_status.sh"
-    log "  Logs:    tail -f /workspace/aiclipse/logs/models.log"
-    log ""
+    if [ "$DOWNLOAD_IN_FOREGROUND" = "true" ]; then
+        download_models_enhanced
+    else
+        log_info "Starting model downloads in background..."
+        download_models_enhanced > /workspace/aiclipse/logs/models.log 2>&1 &
+    fi
 }
