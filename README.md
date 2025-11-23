@@ -1,4 +1,4 @@
-# AiClipse ComfyUI Template System
+# AiClipse ComfyUI Template System ; hi
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-production--ready-green.svg)
