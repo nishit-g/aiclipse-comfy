@@ -13,6 +13,8 @@ ENV TORCH_CUDA_ARCH_LIST="10.0+PTX"
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     cuda-minimal-build-12-8 \
+    cuda-cusparse-dev-12-8 \
+    cuda-cublas-dev-12-8 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set CUDA 12.8 paths
