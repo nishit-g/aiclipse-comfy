@@ -15,6 +15,9 @@ RUN apt-get update && \
     cuda-minimal-build-12-8 \
     libcusparse-dev-12-8 \
     libcublas-dev-12-8 \
+    libcusolver-dev-12-8 \
+    libcurand-dev-12-8 \
+    libcufft-dev-12-8 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set CUDA 12.8 paths
