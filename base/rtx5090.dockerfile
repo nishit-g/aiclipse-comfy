@@ -20,10 +20,12 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:${LD_LIBRARY_PATH}
 
 # Install PyTorch, SageAttention and GPU-specific packages
 RUN /venv/bin/pip install --no-cache-dir \
-    torch=="${TORCH_VERSION}" torchvision torchaudio --index-url ${TORCH_INDEX} && \
-    /venv/bin/pip install --no-cache-dir \
-    xformers=="${XFORMERS_VERSION}" --index-url ${TORCH_INDEX} && \
-    /venv/bin/pip install --no-cache-dir \
+    torch=="${TORCH_VERSION}" torchvision torchaudio --index-url ${TORCH_INDEX}
+
+RUN /venv/bin/pip install --no-cache-dir \
+    xformers=="${XFORMERS_VERSION}" --index-url ${TORCH_INDEX}
+
+RUN /venv/bin/pip install --no-cache-dir \
     triton ninja sageattention
 
 # Copy all setup scripts
