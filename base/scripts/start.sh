@@ -174,7 +174,11 @@ setup_comfyui() {
     # Always ensure requirements are installed (in case of container restart)
     cd "$COMFY_DIR"
     log_info "Installing/Verifying ComfyUI requirements..."
-    /venv/bin/uv pip install --python /venv/bin/python -r requirements.txt
+    if [ -f "requirements.txt" ]; then
+        /venv/bin/uv pip install --python /venv/bin/python -r requirements.txt
+    else
+        log_warn "requirements.txt not found in ComfyUI directory"
+    fi
     
     # Explicitly install critical dependencies that might be missing from requirements.txt
     log_info "Installing critical dependencies (einops, aiohttp)..."
