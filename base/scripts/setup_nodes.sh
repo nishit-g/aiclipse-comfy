@@ -10,7 +10,7 @@ install_node() {
     
     if [ ! -d "$node_path" ]; then
         echo "⬇️ Cloning $node_name..."
-        if ! git clone --depth 1 -b "${branch:-main}" "$repo_url" "$node_path" >/dev/null 2>&1; then
+        if ! git clone --depth 1 -b "${branch:-main}" "$repo_url" "$node_path"; then
             echo "❌ Failed to clone $node_name"
             return 1
         fi
