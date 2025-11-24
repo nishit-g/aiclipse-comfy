@@ -65,10 +65,13 @@ setup_custom_nodes() {
                 # Entry exists, check if it needs update
                 if ! grep -Fxq "$line" "$nodes_manifest"; then
                     log_info "🔄 Updating manifest entry for $repo_url"
-                    # Escape special characters for sed
-                    local escaped_url=$(echo "$repo_url" | sed 's/[\/&]/\\&/g')
-                    local escaped_line=$(echo "$line" | sed 's/[\/&]/\\&/g')
-                    sed -i "s|^$escaped_url|.*|$escaped_line|" "$nodes_manifest"
+                    # Escape special characters for sed (delimiter is |)
+                    # We need to escape /, &, and |
+                    local escaped_url=$(echo "$repo_url" | sed 's/[\/&|]/\\&/g')
+                    local escaped_line=$(echo "$line" | sed 's/[\/&|]/\\&/g')
+                    # Pattern: ^url\|.* (match url followed by pipe and rest of line)
+                    # We use | as delimiter, so we must escape the literal pipe in the regex as \|
+                    sed -i "s|^$escaped_url\|.*|$escaped_line|" "$nodes_manifest"
                 fi
             else
                 # New entry, append
