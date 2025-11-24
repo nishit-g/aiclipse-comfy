@@ -173,7 +173,11 @@ setup_comfyui() {
     # Always ensure requirements are installed (in case of container restart)
     cd "$COMFY_DIR"
     log_info "Installing/Verifying ComfyUI requirements..."
-    /venv/bin/uv pip install --system -r requirements.txt >/dev/null 2>&1
+    /venv/bin/uv pip install --system -r requirements.txt
+    
+    # Explicitly install critical dependencies that might be missing from requirements.txt
+    log_info "Installing critical dependencies (einops, aiohttp)..."
+    /venv/bin/uv pip install --system einops aiohttp
 
     # Install/Update ComfyUI Manager
     if [ ! -d "custom_nodes/ComfyUI-Manager" ]; then
@@ -184,7 +188,7 @@ setup_comfyui() {
     # Always ensure Manager requirements are installed
     if [ -f "custom_nodes/ComfyUI-Manager/requirements.txt" ]; then
         log_info "Installing/Verifying ComfyUI Manager requirements..."
-        /venv/bin/uv pip install --system -r custom_nodes/ComfyUI-Manager/requirements.txt >/dev/null 2>&1
+        /venv/bin/uv pip install --system -r custom_nodes/ComfyUI-Manager/requirements.txt
     fi
 }
 
