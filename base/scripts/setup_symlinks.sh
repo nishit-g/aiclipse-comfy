@@ -1,17 +1,17 @@
 #!/bin/bash
 
 setup_symlinks() {
-    log "🔗 Setting up symlinks for user convenience..."
+    log_info "🔗 Setting up symlinks for user convenience..."
 
     # Robust symlink creator (backs up existing)
     safe_link() {
         local link="$1" target="$2"
         if [ -e "$link" ] && [ ! -L "$link" ]; then
             mv "$link" "${link}.bak.$(date +%s)"
-            log "📦 Backed up existing: $link"
+            log_info "📦 Backed up existing: $link"
         fi
         ln -sfnT "$target" "$link"
-        log "🔗 Linked: $link -> $target"
+        log_info "🔗 Linked: $link -> $target"
     }
 
     # Create user-friendly symlinks at /workspace root
