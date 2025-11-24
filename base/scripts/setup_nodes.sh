@@ -24,7 +24,7 @@ install_node() {
         # Check if we need to install (simple check: are packages installed?)
         # For now, just install to be safe (uv is fast)
         echo "📦 Verifying reqs for $node_name..."
-        /venv/bin/uv pip install --system -r "$node_path/requirements.txt" >/dev/null 2>&1
+        /venv/bin/uv pip install --python /venv/bin/python -r "$node_path/requirements.txt" >/dev/null 2>&1
     fi
     
     if [ -f "$node_path/install.py" ]; then
