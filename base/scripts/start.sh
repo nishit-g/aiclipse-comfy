@@ -9,6 +9,7 @@ log_info "🚀 Starting AiClipse ComfyUI Template System"
 # Environment setup
 export TEMPLATE_VERSION="${TEMPLATE_VERSION:-1.0.0}"
 export TEMPLATE_TYPE="${TEMPLATE_TYPE:-base}"
+log_info "📋 Template Type: $TEMPLATE_TYPE"
 export COMFY_DIR="/workspace/aiclipse/ComfyUI"
 export VENV_PATH="/venv"
 export MODELS_DIR="/workspace/aiclipse/models"
