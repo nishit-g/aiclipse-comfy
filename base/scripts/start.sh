@@ -164,9 +164,20 @@ setup_ssh_with_export() {
 
 # ComfyUI setup
 setup_comfyui() {
-    if [ ! -d "$COMFY_DIR" ]; then
-        log_info "First time setup: Installing ComfyUI..."
-        git clone https://github.com/comfyanonymous/ComfyUI.git "$COMFY_DIR"
+    if [ ! -f "$COMFY_DIR/main.py" ]; then
+        log_info "ComfyUI missing or incomplete (main.py not found). Installing/Repairing..."
+        
+        if [ -d "$COMFY_DIR" ]; then
+            log_warn "Directory exists but main.py missing. Attempting to repair..."
+            cd "$COMFY_DIR"
+            git init
+            git remote add origin https://github.com/comfyanonymous/ComfyUI.git || git remote set-url origin https://github.com/comfyanonymous/ComfyUI.git
+            git fetch origin
+            git checkout -f master
+            git reset --hard origin/master
+        else
+            git clone https://github.com/comfyanonymous/ComfyUI.git "$COMFY_DIR"
+        fi
     else
         log_success "ComfyUI already installed"
     fi
