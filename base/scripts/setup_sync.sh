@@ -128,9 +128,14 @@ setup_workflow_symlinks() {
     fi
 
     # ComfyUI direct access symlink
-    if [ -d "$COMFY_DIR" ] && [ ! -L "$COMFY_DIR/workflows" ]; then
-        ln -sf /workspace/aiclipse/workflows "$COMFY_DIR/workflows"
-        log_info "🔗 Created: $COMFY_DIR/workflows -> /workspace/aiclipse/workflows"
+    if [ -d "$COMFY_DIR" ]; then
+        # Force link creation (replace directory if empty, or backup if needed)
+        if [ -d "$COMFY_DIR/workflows" ] && [ ! -L "$COMFY_DIR/workflows" ]; then
+             mv "$COMFY_DIR/workflows" "$COMFY_DIR/workflows.bak.$(date +%s)"
+             log_info "📦 Backed up existing workflows dir"
+        fi
+        ln -sfn /workspace/aiclipse/workflows "$COMFY_DIR/workflows"
+        log_info "🔗 Linked: $COMFY_DIR/workflows -> /workspace/aiclipse/workflows"
     fi
 
     # Alternative access in ComfyUI input directory
