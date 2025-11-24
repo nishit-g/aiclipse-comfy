@@ -58,11 +58,34 @@ setup_manifest() {
     local template_manifest="/manifests/${TEMPLATE_TYPE}_models.txt"
     if [ -f "$template_manifest" ]; then
         log_info "Merging template manifest: ${TEMPLATE_TYPE}"
-        # Append only unique lines
+    # Smart Merge: Update existing entries based on FILENAME
+    local template_manifest="/manifests/${TEMPLATE_TYPE}_models.txt"
+    if [ -f "$template_manifest" ]; then
+        log_info "Merging template manifest: ${TEMPLATE_TYPE}"
         while IFS= read -r line || [ -n "$line" ]; do
             [[ $line =~ ^[[:space:]]*# ]] && continue
             [[ -z "$line" ]] && continue
-            if ! grep -Fxq "$line" "$manifest_file"; then
+            
+            # Extract filename (3rd field)
+            local filename=$(echo "$line" | cut -d'|' -f3 | xargs)
+            
+            # Check if this filename exists in the manifest (surrounded by pipes)
+            # We assume format: source|id|filename|subdir
+            if grep -q "|${filename}|" "$manifest_file"; then
+                # Entry exists. Check if the full line matches.
+                if ! grep -Fxq "$line" "$manifest_file"; then
+                    log_info "🔄 Updating manifest entry for $filename"
+                    
+                    # Escape special chars for sed. We use # as delimiter to avoid conflict with | and /
+                    local escaped_filename=$(echo "$filename" | sed 's/[#]/\\#/g')
+                    local escaped_line=$(echo "$line" | sed 's/[#]/\\#/g')
+                    
+                    # Regex: match any line containing |filename|
+                    # We replace the entire line.
+                    sed -i "s#^.*|${escaped_filename}|.*\$#${escaped_line}#" "$manifest_file"
+                fi
+            else
+                # New entry, append
                 echo "$line" >> "$manifest_file"
             fi
         done < "$template_manifest"
