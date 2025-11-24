@@ -55,9 +55,7 @@ setup_manifest() {
     fi
 
     # Always merge template manifest if available (to ensure required models are present)
-    local template_manifest="/manifests/${TEMPLATE_TYPE}_models.txt"
-    if [ -f "$template_manifest" ]; then
-        log_info "Merging template manifest: ${TEMPLATE_TYPE}"
+
     # Smart Merge: Update existing entries based on FILENAME
     local template_manifest="/manifests/${TEMPLATE_TYPE}_models.txt"
     if [ -f "$template_manifest" ]; then
