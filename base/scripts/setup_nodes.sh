@@ -50,15 +50,28 @@ setup_custom_nodes() {
         fi
     fi
 
-    # Append template-specific nodes if available (and not already present)
+    # Smart Merge: Update existing entries and append new ones
     local template_manifest="/manifests/${TEMPLATE_TYPE}_nodes.txt"
     if [ -f "$template_manifest" ]; then
         log_info "Merging template manifest: ${TEMPLATE_TYPE}"
-        # Append only unique lines to avoid duplicates
         while IFS= read -r line || [ -n "$line" ]; do
             [[ $line =~ ^[[:space:]]*# ]] && continue
             [[ -z "$line" ]] && continue
-            if ! grep -Fxq "$line" "$nodes_manifest"; then
+            
+            # Extract repo URL (first field)
+            local repo_url=$(echo "$line" | cut -d'|' -f1 | xargs)
+            
+            if grep -q "^$repo_url|" "$nodes_manifest"; then
+                # Entry exists, check if it needs update
+                if ! grep -Fxq "$line" "$nodes_manifest"; then
+                    log_info "🔄 Updating manifest entry for $repo_url"
+                    # Escape special characters for sed
+                    local escaped_url=$(echo "$repo_url" | sed 's/[\/&]/\\&/g')
+                    local escaped_line=$(echo "$line" | sed 's/[\/&]/\\&/g')
+                    sed -i "s|^$escaped_url|.*|$escaped_line|" "$nodes_manifest"
+                fi
+            else
+                # New entry, append
                 echo "$line" >> "$nodes_manifest"
             fi
         done < "$template_manifest"
