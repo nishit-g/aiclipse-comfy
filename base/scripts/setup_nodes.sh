@@ -64,7 +64,7 @@ setup_custom_nodes() {
         if [ -n "$repo_url" ]; then
             echo "$repo_url ${branch:-main} $nodes_dir"
         fi
-    done < "$nodes_manifest" | xargs -P 10 -n 3 -I {} bash -c 'install_node "$@"' _ {}
+    done < "$nodes_manifest" | xargs -P 10 -n 3 bash -c 'install_node "$@"' _
     
     log_success "Custom nodes installation complete"
 }
