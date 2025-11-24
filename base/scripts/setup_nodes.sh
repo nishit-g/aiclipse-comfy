@@ -8,27 +8,28 @@ install_node() {
     local node_name=$(basename "$repo_url" .git)
     local node_path="$nodes_dir/$node_name"
     
-    if [ -d "$node_path" ]; then
-        echo "✅ $node_name already installed"
-        return 0
+    if [ ! -d "$node_path" ]; then
+        echo "⬇️ Cloning $node_name..."
+        if ! git clone --depth 1 -b "${branch:-main}" "$repo_url" "$node_path" >/dev/null 2>&1; then
+            echo "❌ Failed to clone $node_name"
+            return 1
+        fi
+        echo "✨ Cloned $node_name"
+    else
+        echo "✅ $node_name already exists"
+    fi
+
+    # Always check for requirements
+    if [ -f "$node_path/requirements.txt" ]; then
+        # Check if we need to install (simple check: are packages installed?)
+        # For now, just install to be safe (uv is fast)
+        echo "📦 Verifying reqs for $node_name..."
+        /venv/bin/uv pip install --system -r "$node_path/requirements.txt" >/dev/null 2>&1
     fi
     
-    echo "⬇️ Cloning $node_name..."
-    if git clone --depth 1 -b "${branch:-main}" "$repo_url" "$node_path" >/dev/null 2>&1; then
-        if [ -f "$node_path/requirements.txt" ]; then
-            echo "📦 Installing reqs for $node_name..."
-            # Use uv for fast installation
-            /venv/bin/uv pip install --system -r "$node_path/requirements.txt" >/dev/null 2>&1
-        fi
-        
-        if [ -f "$node_path/install.py" ]; then
-            echo "🔧 Running install script for $node_name..."
-            cd "$node_path" && /venv/bin/python install.py >/dev/null 2>&1
-        fi
-        echo "✨ Installed $node_name"
-    else
-        echo "❌ Failed to clone $node_name"
-        return 1
+    if [ -f "$node_path/install.py" ]; then
+        echo "🔧 Running install script for $node_name..."
+        cd "$node_path" && /venv/bin/python install.py >/dev/null 2>&1
     fi
 }
 export -f install_node

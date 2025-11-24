@@ -166,22 +166,25 @@ setup_comfyui() {
     if [ ! -d "$COMFY_DIR" ]; then
         log_info "First time setup: Installing ComfyUI..."
         git clone https://github.com/comfyanonymous/ComfyUI.git "$COMFY_DIR"
-        cd "$COMFY_DIR"
-
-        # Install ComfyUI requirements using uv for speed
-        log_info "Installing requirements with uv..."
-        /venv/bin/uv pip install --system -r requirements.txt
-
-        # Install ComfyUI Manager
-        cd custom_nodes
-        git clone https://github.com/ltdrdata/ComfyUI-Manager
-        if [ -f ComfyUI-Manager/requirements.txt ]; then
-            /venv/bin/uv pip install --system -r ComfyUI-Manager/requirements.txt
-        fi
-
-        log_success "ComfyUI installation complete"
     else
         log_success "ComfyUI already installed"
+    fi
+
+    # Always ensure requirements are installed (in case of container restart)
+    cd "$COMFY_DIR"
+    log_info "Installing/Verifying ComfyUI requirements..."
+    /venv/bin/uv pip install --system -r requirements.txt >/dev/null 2>&1
+
+    # Install/Update ComfyUI Manager
+    if [ ! -d "custom_nodes/ComfyUI-Manager" ]; then
+        log_info "Installing ComfyUI Manager..."
+        git clone https://github.com/ltdrdata/ComfyUI-Manager custom_nodes/ComfyUI-Manager
+    fi
+
+    # Always ensure Manager requirements are installed
+    if [ -f "custom_nodes/ComfyUI-Manager/requirements.txt" ]; then
+        log_info "Installing/Verifying ComfyUI Manager requirements..."
+        /venv/bin/uv pip install --system -r custom_nodes/ComfyUI-Manager/requirements.txt >/dev/null 2>&1
     fi
 }
 
