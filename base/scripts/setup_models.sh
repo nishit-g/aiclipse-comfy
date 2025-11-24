@@ -175,6 +175,7 @@ download_models_async() {
         download_models_enhanced
     else
         log_info "Starting model downloads in background..."
+        mkdir -p /workspace/aiclipse/logs
         download_models_enhanced > /workspace/aiclipse/logs/models.log 2>&1 &
     fi
 }
