@@ -1,2 +1,2 @@
-https://github.com/gseth/ControlAltAI-Nodes|main|utility|ControlAltAI Nodes
-https://github.com/lrzjason/ComfyUI-Qwen-Image-Edit-Plus|main|qwen|Qwen Image Edit Plus
+https://github.com/gseth/ControlAltAI-Nodes|master|utility|ControlAltAI Nodes
+https://github.com/lrzjason/Comfyui-QwenEditUtils|master|qwen|Qwen Edit Utils
