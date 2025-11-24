@@ -33,28 +33,41 @@ YAML
 setup_manifest() {
     local manifest_file="/workspace/aiclipse/models_manifest.txt"
 
-    # Use template-specific manifest if available
+    # Initialize manifest if missing
     if [ ! -f "$manifest_file" ]; then
         # Try template-specific manifest first
         local template_manifest="/manifests/${TEMPLATE_TYPE}_models.txt"
         if [ -f "$template_manifest" ]; then
             cp "$template_manifest" "$manifest_file"
-            log_info "Using template manifest: ${TEMPLATE_TYPE}"
+            log_info "Initialized with template manifest: ${TEMPLATE_TYPE}"
         # Fallback to environment variable
         elif [ -n "$MODELS_MANIFEST" ] && [ -f "$MODELS_MANIFEST" ]; then
             cp "$MODELS_MANIFEST" "$manifest_file"
-            log_info "Using environment manifest: $MODELS_MANIFEST"
+            log_info "Initialized with environment manifest: $MODELS_MANIFEST"
         # Fallback to base manifest
         elif [ -f "/manifests/base_models.txt" ]; then
             cp "/manifests/base_models.txt" "$manifest_file"
-            log_info "Using base models manifest"
+            log_info "Initialized with base models manifest"
         else
-            log_warn "No model manifest found - will start with empty models directory"
-            return 1
+            touch "$manifest_file"
+            log_warn "No model manifest found - initialized empty manifest"
         fi
-    else
-        log_info "Using existing manifest: $manifest_file"
     fi
+
+    # Always merge template manifest if available (to ensure required models are present)
+    local template_manifest="/manifests/${TEMPLATE_TYPE}_models.txt"
+    if [ -f "$template_manifest" ]; then
+        log_info "Merging template manifest: ${TEMPLATE_TYPE}"
+        # Append only unique lines
+        while IFS= read -r line || [ -n "$line" ]; do
+            [[ $line =~ ^[[:space:]]*# ]] && continue
+            [[ -z "$line" ]] && continue
+            if ! grep -Fxq "$line" "$manifest_file"; then
+                echo "$line" >> "$manifest_file"
+            fi
+        done < "$template_manifest"
+    fi
+    
     return 0
 }
 

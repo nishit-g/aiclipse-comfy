@@ -40,8 +40,28 @@ setup_custom_nodes() {
     local nodes_manifest="/workspace/custom_nodes_manifest.txt"
     local nodes_dir="/workspace/aiclipse/ComfyUI/custom_nodes"
     
-    if [ ! -f "$nodes_manifest" ] && [ -f "/manifests/base_nodes.txt" ]; then
-        cp "/manifests/base_nodes.txt" "$nodes_manifest"
+    # Initialize manifest from base if missing
+    if [ ! -f "$nodes_manifest" ]; then
+        if [ -f "/manifests/base_nodes.txt" ]; then
+            cp "/manifests/base_nodes.txt" "$nodes_manifest"
+            log_info "Initialized with base nodes manifest"
+        else
+            touch "$nodes_manifest"
+        fi
+    fi
+
+    # Append template-specific nodes if available (and not already present)
+    local template_manifest="/manifests/${TEMPLATE_TYPE}_nodes.txt"
+    if [ -f "$template_manifest" ]; then
+        log_info "Merging template manifest: ${TEMPLATE_TYPE}"
+        # Append only unique lines to avoid duplicates
+        while IFS= read -r line || [ -n "$line" ]; do
+            [[ $line =~ ^[[:space:]]*# ]] && continue
+            [[ -z "$line" ]] && continue
+            if ! grep -Fxq "$line" "$nodes_manifest"; then
+                echo "$line" >> "$nodes_manifest"
+            fi
+        done < "$template_manifest"
     fi
     
     if [ ! -f "$nodes_manifest" ]; then
