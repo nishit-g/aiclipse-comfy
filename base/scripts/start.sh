@@ -222,14 +222,22 @@ start_comfyui_with_custom_args() {
     # Base arguments
     local args="--listen 0.0.0.0 --port 8188"
 
-    # Add SageAttention if enabled
-    if [ "$ENABLE_SAGE_ATTENTION" = "true" ]; then
-        args="$args --use-sage-attention"
-    fi
-
+    # If COMFY_ARGS is set, use it to OVERRIDE/APPEND to base args
+    # We do NOT force --use-sage-attention anymore.
+    # The user must provide it in COMFY_ARGS if they want it.
+    
     if [ -n "$COMFY_ARGS" ]; then
+        # We append COMFY_ARGS to base args.
+        # Since ComfyUI parses args, if the user provides a conflicting arg, 
+        # it might override or conflict depending on ComfyUI's parser.
+        # But for flags like --use-sage-attention, simply NOT adding it here
+        # gives the user control to add it (or not) in COMFY_ARGS.
         args="$args $COMFY_ARGS"
         log_info "Using COMFY_ARGS env: $COMFY_ARGS"
+    elif [ "$ENABLE_SAGE_ATTENTION" = "true" ]; then
+        # Only default to sage attention if COMFY_ARGS is NOT present
+        # and the env var is explicitly set.
+        args="$args --use-sage-attention"
     fi
 
     log_info "Starting ComfyUI with: $args"
