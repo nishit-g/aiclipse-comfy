@@ -2,3 +2,4 @@ url|https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/resolve/main/split_
 url|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors|qwen_image_vae.safetensors|vae
 url|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors|qwen_2.5_vl_7b_fp8_scaled.safetensors|text_encoders
 url|https://huggingface.co/lightx2v/Qwen-Image-Lightning/resolve/main/Qwen-Image-Lightning-4steps-V1.0.safetensors|Qwen-Image-Lightning-4steps-V1.0.safetensors|loras
+r2|hk_v1_final.safetensors|hk_v1_final.safetensors|loras

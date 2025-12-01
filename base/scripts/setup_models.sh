@@ -4,30 +4,44 @@
 setup_model_paths() {
     log_info "Configuring ComfyUI model paths..."
 
-    # Create extra_model_paths.yaml with enhanced structure
-    cat > "$COMFY_DIR/extra_model_paths.yaml" << 'YAML'
-comfyui:
-    base_path: /workspace/aiclipse/ComfyUI
-    checkpoints: /workspace/aiclipse/models/checkpoints
-    clip: /workspace/aiclipse/models/clip
-    clip_vision: /workspace/aiclipse/models/clip_vision
-    configs: /workspace/aiclipse/models/configs
-    controlnet: /workspace/aiclipse/models/controlnet
-    embeddings: /workspace/aiclipse/models/embeddings
-    loras: /workspace/aiclipse/models/loras
-    upscale_models: /workspace/aiclipse/models/upscale_models
-    vae: /workspace/aiclipse/models/vae
-    hypernetworks: /workspace/aiclipse/models/hypernetworks
-    photomaker: /workspace/aiclipse/models/photomaker
-    classifiers: /workspace/aiclipse/models/classifiers
-    style_models: /workspace/aiclipse/models/style_models
-    diffusers: /workspace/aiclipse/models/diffusers
-    text_encoders: /workspace/aiclipse/models/text_encoders
-    gligen: /workspace/aiclipse/models/gligen
-    esrgan: /workspace/aiclipse/models/esrgan
-YAML
+    # Strategy: Symlink the entire models directory
+    # This is more robust than extra_model_paths.yaml because it automatically
+    # handles ANY new model folder types added by custom nodes.
 
-    log_success "Enhanced model paths configured"
+    local comfy_models_dir="$COMFY_DIR/models"
+    local persistent_models_dir="/workspace/aiclipse/models"
+
+    # Ensure persistent directory exists
+    mkdir -p "$persistent_models_dir"
+
+    # If ComfyUI/models is already a symlink to our target, we are good
+    if [ -L "$comfy_models_dir" ] && [ "$(readlink "$comfy_models_dir")" = "$persistent_models_dir" ]; then
+        log_success "Models directory already linked"
+        return 0
+    fi
+
+    # If it's a real directory (fresh install), we need to migrate and link
+    if [ -d "$comfy_models_dir" ] && [ ! -L "$comfy_models_dir" ]; then
+        log_info "🔄 Migrating default model folders to persistent storage..."
+        
+        # Move any existing files/folders from ComfyUI/models to persistent storage
+        # use rsync to merge (flags: archive, no-overwrite-newer, verbose)
+        rsync -a --ignore-existing "$comfy_models_dir/" "$persistent_models_dir/"
+        
+        # Remove the original directory
+        rm -rf "$comfy_models_dir"
+    fi
+
+    # Create the symlink
+    ln -sfn "$persistent_models_dir" "$comfy_models_dir"
+    log_success "🔗 Linked: $comfy_models_dir -> $persistent_models_dir"
+    
+    # We no longer need extra_model_paths.yaml for the main models
+    # But we remove it if it exists to avoid confusion/conflicts
+    if [ -f "$COMFY_DIR/extra_model_paths.yaml" ]; then
+        rm "$COMFY_DIR/extra_model_paths.yaml"
+        log_info "🗑️ Removed obsolete extra_model_paths.yaml"
+    fi
 }
 
 setup_manifest() {
@@ -154,6 +168,7 @@ generate_aria2_input() {
 download_models_enhanced() {
     local manifest_file="/workspace/aiclipse/models_manifest.txt"
     local aria2_input="/workspace/aiclipse/aria2_input.txt"
+    local python_manifest="/workspace/aiclipse/python_manifest.txt"
     
     if [ "$DOWNLOAD_MODELS" != "true" ]; then
         log_info "Model downloads disabled (DOWNLOAD_MODELS=false)"
@@ -164,34 +179,100 @@ download_models_enhanced() {
         return 0
     fi
     
-    log_info "Generating download list..."
-    generate_aria2_input "$manifest_file" "$aria2_input"
+    log_info "Generating download lists..."
     
-    if [ ! -s "$aria2_input" ]; then
-        log_info "No valid downloads found in manifest."
-        return 0
-    fi
+    # Clear previous lists
+    rm -f "$aria2_input" "$python_manifest"
+    touch "$aria2_input" "$python_manifest"
     
-    log_info "🔥 Starting high-performance parallel downloads..."
+    # Split downloads between Aria2 and Python script
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip comments and empty lines
+        [[ $line =~ ^[[:space:]]*# ]] && continue
+        [[ -z "$line" ]] && continue
+        
+        # Parse line: source|identifier|filename|subdir[|checksum]
+        IFS='|' read -r source identifier filename subdir checksum <<< "$line"
+        
+        source=$(echo "$source" | tr '[:upper:]' '[:lower:]' | xargs)
+        identifier=$(echo "$identifier" | xargs)
+        filename=$(echo "$filename" | xargs)
+        subdir=$(echo "$subdir" | xargs)
+        
+        local url=""
+        local header=""
+        local use_aria2=false
+        
+        case "$source" in
+            "huggingface"|"hf")
+                url="https://huggingface.co/${identifier}/resolve/main/${filename}"
+                if [ -n "$HF_TOKEN" ]; then
+                    header="Authorization: Bearer $HF_TOKEN"
+                fi
+                use_aria2=true
+                ;;
+            "civitai")
+                url="https://civitai.com/api/download/models/${identifier}"
+                if [ -n "$CIVITAI_TOKEN" ]; then
+                    header="Authorization: Bearer $CIVITAI_TOKEN"
+                fi
+                use_aria2=true
+                ;;
+            "url"|"direct")
+                url="$identifier"
+                use_aria2=true
+                ;;
+            "r2"|"cloudflare")
+                # R2 goes to python script
+                echo "$line" >> "$python_manifest"
+                continue
+                ;;
+            *)
+                # Unknown sources go to python script as fallback
+                echo "$line" >> "$python_manifest"
+                continue
+                ;;
+        esac
+        
+        if [ "$use_aria2" = "true" ] && [ -n "$url" ]; then
+            echo "$url" >> "$aria2_input"
+            echo "  out=$filename" >> "$aria2_input"
+            echo "  dir=/workspace/aiclipse/models/$subdir" >> "$aria2_input"
+            if [ -n "$header" ]; then
+                echo "  header=$header" >> "$aria2_input"
+            fi
+        fi
+        
+    done < "$manifest_file"
     
-    # Aria2c options:
-    # -x 16: 16 connections per server
-    # -s 16: 16 connections per file
-    # -j 10: 10 parallel downloads
-    # -c: Continue
-    # --summary-interval=0: Reduce log noise
-    
-    if aria2c -i "$aria2_input" \
-        -x 16 -s 16 -j 10 \
-        -c --auto-file-renaming=false \
-        --console-log-level=warn \
-        --summary-interval=30; then
-        log_success "All models downloaded successfully"
+    # 1. Run Aria2 downloads
+    if [ -s "$aria2_input" ]; then
+        log_info "🔥 Starting high-performance parallel downloads (Aria2)..."
+        if aria2c -i "$aria2_input" \
+            -x 16 -s 16 -j 10 \
+            -c --auto-file-renaming=false \
+            --console-log-level=warn \
+            --summary-interval=30; then
+            log_success "Aria2 downloads completed"
+        else
+            log_error "Some Aria2 downloads failed"
+        fi
     else
-        log_error "Some downloads failed"
+        log_info "No standard downloads found for Aria2."
     fi
     
-    rm -f "$aria2_input"
+    # 2. Run Python downloads (R2, etc)
+    if [ -s "$python_manifest" ]; then
+        log_info "🐍 Starting specialized downloads (R2/Python)..."
+        if /venv/bin/python /scripts/download_models.py --manifest "$python_manifest" --models-dir "/workspace/aiclipse/models"; then
+            log_success "Python downloads completed"
+        else
+            log_error "Some Python downloads failed"
+        fi
+    fi
+    
+    # Cleanup
+    rm -f "$aria2_input" "$python_manifest"
 }
 
 download_models_async() {

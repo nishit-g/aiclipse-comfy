@@ -69,12 +69,20 @@ sync_workflows_to_comfyui() {
     mkdir -p "$comfy_user_workflows"
 
     # Step 3: Copy workflows to ComfyUI's expected location
+    # Step 3: Copy workflows to ComfyUI's expected location
     if [ -d "/workspace/aiclipse/workflows" ]; then
         log_info "🎯 Copying workflows to ComfyUI user directory..."
-        find /workspace/aiclipse/workflows -name "*.json" -type f -exec cp {} "$comfy_user_workflows/" \;
+        
+        if [ "$FORCE_WORKFLOW_RESET" = "true" ]; then
+            log_warn "FORCE_WORKFLOW_RESET is true - Overwriting existing workflows!"
+            find /workspace/aiclipse/workflows -name "*.json" -type f -exec cp -f {} "$comfy_user_workflows/" \;
+        else
+            # Use -n to not overwrite existing files (preserves user edits)
+            find /workspace/aiclipse/workflows -name "*.json" -type f -exec cp -n {} "$comfy_user_workflows/" \;
+        fi
 
         local copied_count=$(find "$comfy_user_workflows" -name "*.json" -type f | wc -l)
-        log_info "✅ Copied $copied_count workflow(s) to ComfyUI user directory"
+        log_info "✅ Copied/Verified $copied_count workflow(s) in ComfyUI user directory"
     fi
 
     # Step 4: Configure Custom Scripts extension if available

@@ -115,6 +115,7 @@ setup_environment() {
         "TEMPLATE_TYPE"
         "TEMPLATE_VERSION"
         "GPU_TYPE"
+        "COMFY_ARGS"
     )
 
     # Create environment file for SSH sessions
