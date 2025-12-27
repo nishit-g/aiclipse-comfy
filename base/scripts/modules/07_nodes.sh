@@ -16,11 +16,12 @@ install_single_node() {
     
     if [[ ! -d "$node_path" ]]; then
         echo "[NODES] ⬇️ Cloning $node_name..."
-        if ! git clone --depth 1 -b "$branch" "$repo_url" "$node_path" 2>&1 | grep -v "^Cloning"; then
+        if git clone --depth 1 -b "$branch" "$repo_url" "$node_path" >/dev/null 2>&1; then
+            echo "[NODES] ✅ Installed: $node_name"
+        else
             echo "[NODES] ❌ Failed: $node_name"
             return 1
         fi
-        echo "[NODES] ✅ Installed: $node_name"
     else
         echo "[NODES] ⏭️ Exists: $node_name"
     fi
