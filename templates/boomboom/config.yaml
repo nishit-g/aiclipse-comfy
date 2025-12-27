@@ -1,0 +1,91 @@
+# ==============================================================================
+# Boomboom Template Configuration
+# Flux Kontext for advanced image generation and editing
+# ==============================================================================
+
+name: boomboom
+version: 2.0.0
+description: Flux Kontext - Advanced image generation with in-context editing
+gpu_requirement: 24GB
+
+# ComfyUI arguments
+comfy_args:
+  - --highvram
+  - --preview-method auto
+
+# ==============================================================================
+# Models
+# ==============================================================================
+models:
+  # ---------------------------------------------------------------------------
+  # FLUX KONTEXT CORE
+  # ---------------------------------------------------------------------------
+  
+  # Main Flux-Kontext model (full version - 24GB)
+  - source: huggingface
+    repo: black-forest-labs/FLUX.1-Kontext-dev
+    file: flux1-kontext-dev.safetensors
+    path: unet
+    
+  # ComfyUI optimized FP8 version (alternative)
+  - source: huggingface
+    repo: Comfy-Org/flux1-kontext-dev_ComfyUI
+    file: split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors
+    path: unet
+    
+  # ---------------------------------------------------------------------------
+  # VAE & ENCODERS
+  # ---------------------------------------------------------------------------
+  
+  # Flux VAE
+  - source: huggingface
+    repo: black-forest-labs/FLUX.1-Kontext-dev
+    file: ae.safetensors
+    path: vae
+    
+  # CLIP Text Encoder
+  - source: huggingface
+    repo: comfyanonymous/flux_text_encoders
+    file: clip_l.safetensors
+    path: text_encoders
+    
+  # T5 Text Encoder (FP16)
+  - source: huggingface
+    repo: comfyanonymous/flux_text_encoders
+    file: t5xxl_fp16.safetensors
+    path: text_encoders
+    
+  # T5 Text Encoder (FP8 - smaller)
+  - source: huggingface
+    repo: comfyanonymous/flux_text_encoders
+    file: t5xxl_fp8_e4m3fn.safetensors
+    path: text_encoders
+    
+  # ---------------------------------------------------------------------------
+  # LORAS (from R2)
+  # ---------------------------------------------------------------------------
+  
+  - source: r2
+    key: loras/v9_xelios_it.safetensors
+    file: v9_xelios_it.safetensors
+    path: loras
+    
+  - source: r2
+    key: loras/v12_xelios_it.safetensors
+    file: v12_xelios_it.safetensors
+    path: loras
+    
+  - source: r2
+    key: loras/v12_xelios_it_5250.safetensors
+    file: v12_xelios_it_5250.safetensors
+    path: loras
+
+# ==============================================================================
+# Custom Nodes
+# ==============================================================================
+nodes:
+  - repo: https://github.com/ltdrdata/ComfyUI-Manager
+  - repo: https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite
+    branch: main
+  - repo: https://github.com/cubiq/ComfyUI_IPAdapter_plus
+  - repo: https://github.com/pythongosssss/ComfyUI-Custom-Scripts

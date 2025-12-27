@@ -1,5 +1,6 @@
 #!/bin/bash
 # Fixed setup_sync.sh - Proper ComfyUI Workflow Integration
+set -euo pipefail
 
 sync_template_if_needed() {
     log_info "🔄 Checking template version sync..."

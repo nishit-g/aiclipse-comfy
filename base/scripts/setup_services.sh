@@ -1,4 +1,6 @@
 #!/bin/bash
+# Services Setup Script
+set -euo pipefail
 
 start_all_services() {
     log_info "🌐 Starting background services..."

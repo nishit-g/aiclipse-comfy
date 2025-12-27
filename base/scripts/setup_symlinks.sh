@@ -1,4 +1,6 @@
 #!/bin/bash
+# Symlinks Setup Script
+set -euo pipefail
 
 setup_symlinks() {
     log_info "🔗 Setting up symlinks for user convenience..."

@@ -1,5 +1,6 @@
 #!/bin/bash
 # Enhanced Model Setup Script with Aria2c Parallel Downloads
+set -euo pipefail
 
 setup_model_paths() {
     log_info "Configuring ComfyUI model paths..."

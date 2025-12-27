@@ -1,4 +1,6 @@
 #!/bin/bash
+# Custom Nodes Setup Script
+set -euo pipefail
 
 install_node() {
     local repo_url="$1"
