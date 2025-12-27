@@ -91,15 +91,11 @@ download_from_yaml() {
     
     # Parse YAML and generate download lists (use jq for fast JSON parsing)
     yaml_list "$config" "models" | while read -r item; do
-        # Use jq for fast JSON parsing (single call per field)
-        local source=$(echo "$item" | jq -r '.source // "huggingface"')
+        # Single jq call per model (faster than 4 separate calls)
+        read -r source repo file path key <<< $(echo "$item" | jq -r '[.source//"hf",.repo//"",.file//"",.path//"",.key//""] | @tsv')
         
         case "$source" in
             huggingface|hf)
-                local repo=$(echo "$item" | jq -r '.repo // ""')
-                local file=$(echo "$item" | jq -r '.file // ""')
-                local path=$(echo "$item" | jq -r '.path // ""')
-                
                 [[ -z "$repo" || -z "$file" ]] && continue
                 
                 local target_file="$MODELS_DIR/$path/$file"
@@ -123,10 +119,7 @@ download_from_yaml() {
                 model_count=$((model_count + 1))
                 ;;
             r2|cloudflare)
-                local key=$(echo "$item" | jq -r '.key // ""')
-                local file=$(echo "$item" | jq -r '.file // ""')
-                local path=$(echo "$item" | jq -r '.path // ""')
-                
+                # key, file, path already parsed from single jq call above
                 [[ -z "$key" || -z "$file" ]] && continue
                 
                 log_info "📥 Queued: $file (R2)"

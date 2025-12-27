@@ -30,24 +30,20 @@ setup_comfyui() {
     cd "$COMFY_DIR"
     log_info "Installing ComfyUI requirements..."
     
-    if file_exists "requirements.txt"; then
-        "$VENV_PATH/bin/uv" pip install --python "$VENV_PATH/bin/python" -r requirements.txt
-    fi
-    
-    # Critical dependencies
-    log_info "Installing critical dependencies..."
-    "$VENV_PATH/bin/uv" pip install --python "$VENV_PATH/bin/python" einops aiohttp
-
-    # ComfyUI Manager
+    # ComfyUI Manager (install first so we can include its requirements)
     local manager_dir="$COMFY_DIR/custom_nodes/ComfyUI-Manager"
     if [[ ! -d "$manager_dir" ]]; then
         log_info "Installing ComfyUI Manager..."
-        git clone https://github.com/ltdrdata/ComfyUI-Manager "$manager_dir"
+        git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager "$manager_dir"
     fi
     
+    # Single pip install for all requirements (faster than 3 separate calls)
+    local pip_args="-r requirements.txt einops aiohttp"
     if file_exists "$manager_dir/requirements.txt"; then
-        "$VENV_PATH/bin/uv" pip install --python "$VENV_PATH/bin/python" -r "$manager_dir/requirements.txt"
+        pip_args="$pip_args -r $manager_dir/requirements.txt"
     fi
+    
+    "$VENV_PATH/bin/uv" pip install --quiet --python "$VENV_PATH/bin/python" $pip_args
     
     log_success "ComfyUI setup complete"
 }

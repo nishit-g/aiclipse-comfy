@@ -99,9 +99,8 @@ install_nodes_from_yaml() {
     node_list=$(mktemp)
     
     yaml_list "$config" "nodes" | while read -r item; do
-        # Use jq for fast JSON parsing
-        local repo=$(echo "$item" | jq -r '.repo // ""')
-        local branch=$(echo "$item" | jq -r '.branch // "main"')
+        # Single jq call per node (faster than 2 separate calls)
+        read -r repo branch <<< $(echo "$item" | jq -r '[.repo//"",.branch//"main"] | @tsv')
         
         if [[ -n "$repo" ]]; then
             echo "$repo $branch $nodes_dir" >> "$node_list"

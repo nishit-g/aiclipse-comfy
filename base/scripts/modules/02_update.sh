@@ -26,6 +26,16 @@ auto_update() {
         log_info "Skipping auto-update (AUTO_UPDATE=false)"
         return 0
     fi
+    
+    # Skip if recently updated (within 5 minutes) - saves ~3s
+    local last_update="$WORKSPACE/state/last_update"
+    if [[ -f "$last_update" ]]; then
+        local age=$(($(date +%s) - $(stat -c %Y "$last_update" 2>/dev/null || echo 0)))
+        if [[ "$age" -lt 300 ]]; then
+            log_info "Skipping update (checked ${age}s ago)"
+            return 0
+        fi
+    fi
 
     log_step "Checking for updates from $CONFIG_REPO..."
     
