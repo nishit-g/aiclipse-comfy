@@ -43,6 +43,10 @@ download_models() {
     
     log_step "Starting model downloads..."
     
+    # Enable HuggingFace XET protocol for 10x faster downloads
+    export HF_XET_HIGH_PERFORMANCE=1
+    export HF_HUB_ENABLE_HF_TRANSFER=1
+    
     # Config lookup order:
     # 1. /config/config.yaml (synced from GitHub at runtime)
     # 2. /templates/{type}/config.yaml (baked in image)
@@ -131,15 +135,17 @@ download_from_yaml() {
         esac
     done
     
-    # Run aria2c for HTTP downloads
+    # Run aria2c for HTTP downloads (optimized for speed)
     if [[ -s "$aria2_input" ]]; then
         local hf_count=$(grep -c "^https://" "$aria2_input" 2>/dev/null || echo 0)
-        log_info "🚀 Downloading $hf_count models from HuggingFace..."
+        log_info "🚀 Downloading $hf_count models from HuggingFace (parallel)..."
         aria2c -i "$aria2_input" \
-            -x 16 -s 16 -j 4 \
+            -x 16 -s 16 -j 8 \
             -c --auto-file-renaming=false \
+            --file-allocation=none \
+            --disk-cache=64M \
             --console-log-level=notice \
-            --summary-interval=10 2>&1 | grep -E "Download|OK|ERR|\[" || log_warn "Some aria2c downloads failed"
+            --summary-interval=15 2>&1 | grep -E "Download|OK|ERR|\[#" || log_warn "Some aria2c downloads failed"
     fi
     
     # Run Python for R2 downloads
