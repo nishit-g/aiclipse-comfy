@@ -46,14 +46,24 @@ setup_custom_nodes() {
     local nodes_dir="$COMFY_DIR/custom_nodes"
     ensure_dir "$nodes_dir"
     
-    # Try YAML config first
-    local config="/templates/${TEMPLATE_TYPE}/config.yaml"
+    # Config lookup order:
+    # 1. /config/config.yaml (synced from GitHub at runtime)
+    # 2. /templates/{type}/config.yaml (baked in image)
+    # 3. Legacy TXT manifests
+    local config=""
     
-    if file_exists "$config"; then
-        log_info "Installing nodes from YAML config..."
+    if file_exists "/config/config.yaml"; then
+        config="/config/config.yaml"
+        log_info "Using synced config for nodes"
+    elif file_exists "/templates/${TEMPLATE_TYPE}/config.yaml"; then
+        config="/templates/${TEMPLATE_TYPE}/config.yaml"
+        log_info "Using image config for nodes"
+    fi
+    
+    if [[ -n "$config" ]]; then
         install_nodes_from_yaml "$config" "$nodes_dir"
     else
-        log_info "Installing nodes from legacy manifest..."
+        log_info "Using legacy manifest for nodes"
         install_nodes_from_manifest "$nodes_dir"
     fi
     

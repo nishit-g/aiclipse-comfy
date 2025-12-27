@@ -43,20 +43,32 @@ download_models() {
     
     log_step "Starting model downloads..."
     
-    # Try YAML config first, fallback to TXT manifest
-    local config="/templates/${TEMPLATE_TYPE}/config.yaml"
-    local manifest="/workspace/aiclipse/models_manifest.txt"
+    # Config lookup order:
+    # 1. /config/config.yaml (synced from GitHub at runtime)
+    # 2. /templates/{type}/config.yaml (baked in image)
+    # 3. Legacy TXT manifests
+    local config=""
     
-    if file_exists "$config"; then
-        log_info "Using YAML config: $config"
+    if file_exists "/config/config.yaml"; then
+        config="/config/config.yaml"
+        log_info "Using synced config: $config"
+    elif file_exists "/templates/${TEMPLATE_TYPE}/config.yaml"; then
+        config="/templates/${TEMPLATE_TYPE}/config.yaml"
+        log_info "Using image config: $config"
+    fi
+    
+    if [[ -n "$config" ]]; then
         download_from_yaml "$config"
-    elif file_exists "$manifest"; then
-        log_info "Using legacy manifest: $manifest"
-        download_from_manifest "$manifest"
     else
-        # Try template manifest
+        # Fallback to legacy manifest
+        local manifest="/workspace/aiclipse/models_manifest.txt"
         local template_manifest="/manifests/${TEMPLATE_TYPE}_models.txt"
-        if file_exists "$template_manifest"; then
+        
+        if file_exists "$manifest"; then
+            log_info "Using legacy manifest: $manifest"
+            download_from_manifest "$manifest"
+        elif file_exists "$template_manifest"; then
+            log_info "Using template manifest: $template_manifest"
             cp "$template_manifest" "$manifest"
             download_from_manifest "$manifest"
         else
