@@ -83,6 +83,7 @@ download_from_yaml() {
     aria2_input=$(mktemp)
     local python_manifest
     python_manifest=$(mktemp)
+    local model_count=0
     
     # Parse YAML and generate download lists
     yaml_list "$config" "models" | while read -r item; do
@@ -95,6 +96,15 @@ download_from_yaml() {
                 file=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('file',''))")
                 path=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('path',''))")
                 
+                local target_file="$MODELS_DIR/$path/$file"
+                if [[ -f "$target_file" ]]; then
+                    local size_mb=$(du -m "$target_file" 2>/dev/null | cut -f1)
+                    log_info "⏭️ Exists: $file (${size_mb}MB)"
+                    continue
+                fi
+                
+                log_info "📥 Queued: $file from $repo"
+                
                 local url="https://huggingface.co/${repo}/resolve/main/${file}"
                 
                 echo "$url" >> "$aria2_input"
@@ -104,13 +114,16 @@ download_from_yaml() {
                 if [[ -n "${HF_TOKEN:-}" ]]; then
                     echo "  header=Authorization: Bearer $HF_TOKEN" >> "$aria2_input"
                 fi
+                model_count=$((model_count + 1))
                 ;;
             r2|cloudflare)
                 key=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))")
                 file=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('file',''))")
                 path=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('path',''))")
                 
+                log_info "📥 Queued: $file from R2"
                 echo "r2|$key|$file|$path" >> "$python_manifest"
+                model_count=$((model_count + 1))
                 ;;
             *)
                 log_warn "Unknown source: $source"
@@ -120,24 +133,28 @@ download_from_yaml() {
     
     # Run aria2c for HTTP downloads
     if [[ -s "$aria2_input" ]]; then
-        log_info "Starting parallel downloads (aria2c)..."
+        local hf_count=$(grep -c "^https://" "$aria2_input" 2>/dev/null || echo 0)
+        log_info "🚀 Downloading $hf_count models from HuggingFace..."
         aria2c -i "$aria2_input" \
-            -x 16 -s 16 -j 10 \
+            -x 16 -s 16 -j 4 \
             -c --auto-file-renaming=false \
-            --console-log-level=warn \
-            --summary-interval=30 || log_warn "Some aria2c downloads failed"
+            --console-log-level=notice \
+            --summary-interval=10 2>&1 | grep -E "Download|OK|ERR|\[" || log_warn "Some aria2c downloads failed"
     fi
     
     # Run Python for R2 downloads
     if [[ -s "$python_manifest" ]]; then
-        log_info "Starting R2 downloads (Python)..."
+        log_info "☁️ Starting R2 downloads..."
         "$VENV_PATH/bin/python" /scripts/download_models.py \
             --manifest "$python_manifest" \
             --models-dir "$MODELS_DIR" || log_warn "Some R2 downloads failed"
     fi
     
     rm -f "$aria2_input" "$python_manifest"
-    log_success "Model downloads complete"
+    
+    # Show summary with disk usage
+    local total_size=$(du -sh "$MODELS_DIR" 2>/dev/null | cut -f1)
+    log_success "Model downloads complete - Total: ${total_size:-unknown}"
 }
 
 download_from_manifest() {
@@ -150,10 +167,13 @@ download_from_manifest() {
 
 # Run module
 setup_model_paths
-if is_true "${DOWNLOAD_IN_FOREGROUND:-false}"; then
-    download_models
-else
+
+# Run downloads (foreground by default for visibility)
+if is_true "${DOWNLOAD_IN_BACKGROUND:-false}"; then
     log_info "Starting model downloads in background..."
     ensure_dir "$LOGS_DIR"
     download_models > "$LOGS_DIR/models.log" 2>&1 &
+    log_info "Model logs: $LOGS_DIR/models.log"
+else
+    download_models
 fi

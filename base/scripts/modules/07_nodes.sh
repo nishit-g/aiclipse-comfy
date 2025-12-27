@@ -15,27 +15,27 @@ install_single_node() {
     local node_path="$nodes_dir/$node_name"
     
     if [[ ! -d "$node_path" ]]; then
-        echo "⬇️ Cloning $node_name..."
-        if ! git clone --depth 1 -b "$branch" "$repo_url" "$node_path" 2>/dev/null; then
-            echo "❌ Failed to clone $node_name"
+        echo "[NODES] ⬇️ Cloning $node_name..."
+        if ! git clone --depth 1 -b "$branch" "$repo_url" "$node_path" 2>&1 | grep -v "^Cloning"; then
+            echo "[NODES] ❌ Failed: $node_name"
             return 1
         fi
-        echo "✨ Cloned $node_name"
+        echo "[NODES] ✅ Installed: $node_name"
     else
-        echo "✅ $node_name already exists"
+        echo "[NODES] ⏭️ Exists: $node_name"
     fi
 
-    # Install requirements
+    # Install requirements (show errors)
     if [[ -f "$node_path/requirements.txt" ]]; then
-        echo "📦 Installing requirements for $node_name..."
-        "$VENV_PATH/bin/uv" pip install --python "$VENV_PATH/bin/python" \
-            -r "$node_path/requirements.txt" >/dev/null 2>&1 || true
+        if ! "$VENV_PATH/bin/uv" pip install --python "$VENV_PATH/bin/python" \
+            -r "$node_path/requirements.txt" 2>&1 | grep -iE "error|failed|warning" || true; then
+            : # Requirements installed silently
+        fi
     fi
     
     # Run install script if present
     if [[ -f "$node_path/install.py" ]]; then
-        echo "🔧 Running install.py for $node_name..."
-        (cd "$node_path" && "$VENV_PATH/bin/python" install.py >/dev/null 2>&1) || true
+        (cd "$node_path" && "$VENV_PATH/bin/python" install.py 2>&1 | grep -iE "error|failed" || true)
     fi
 }
 export -f install_single_node
@@ -67,7 +67,11 @@ setup_custom_nodes() {
         install_nodes_from_manifest "$nodes_dir"
     fi
     
-    log_success "Custom nodes installation complete"
+    # Show summary
+    local node_count
+    node_count=$(find "$nodes_dir" -maxdepth 1 -type d | wc -l)
+    node_count=$((node_count - 1))  # Exclude the dir itself
+    log_success "Custom nodes ready: $node_count installed"
 }
 
 install_nodes_from_yaml() {
