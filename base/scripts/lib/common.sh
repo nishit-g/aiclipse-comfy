@@ -84,9 +84,12 @@ safe_link() {
 export -f ensure_dir file_exists dir_exists is_true is_set safe_link
 
 # =============================================================================
-# SOURCE LOGGING (if available)
+# SOURCE LOGGING (if available and not already loaded)
 # =============================================================================
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "$SCRIPT_DIR/logging.sh" ]]; then
-    source "$SCRIPT_DIR/logging.sh"
+if ! declare -f log_info > /dev/null 2>&1; then
+    _COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "$_COMMON_DIR/logging.sh" ]]; then
+        source "$_COMMON_DIR/logging.sh"
+    fi
+    unset _COMMON_DIR
 fi
