@@ -51,13 +51,13 @@ for module in "$SCRIPT_DIR"/modules/*.sh; do
             
             # Start models in background
             (source "$module") &
-            local models_pid=$!
+            models_pid=$!
             
             # Start nodes in background
-            local nodes_module="$SCRIPT_DIR/modules/07_nodes.sh"
+            nodes_module="$SCRIPT_DIR/modules/07_nodes.sh"
             if [[ -f "$nodes_module" ]]; then
                 (source "$nodes_module") &
-                local nodes_pid=$!
+                nodes_pid=$!
             fi
             
             # Wait for both
