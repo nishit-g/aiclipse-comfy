@@ -64,20 +64,7 @@ download_models() {
     if [[ -n "$config" ]]; then
         download_from_yaml "$config"
     else
-        # Fallback to legacy manifest
-        local manifest="/workspace/aiclipse/models_manifest.txt"
-        local template_manifest="/manifests/${TEMPLATE_TYPE}_models.txt"
-        
-        if file_exists "$manifest"; then
-            log_info "Using legacy manifest: $manifest"
-            download_from_manifest "$manifest"
-        elif file_exists "$template_manifest"; then
-            log_info "Using template manifest: $template_manifest"
-            cp "$template_manifest" "$manifest"
-            download_from_manifest "$manifest"
-        else
-            log_warn "No model config or manifest found"
-        fi
+        log_warn "No model config found - create config.yaml in /config/ or /templates/${TEMPLATE_TYPE}/"
     fi
 }
 
@@ -158,14 +145,6 @@ download_from_yaml() {
     # Show summary with disk usage
     local total_size=$(du -sh "$MODELS_DIR" 2>/dev/null | cut -f1)
     log_success "Model downloads complete - Total: ${total_size:-unknown}"
-}
-
-download_from_manifest() {
-    local manifest="$1"
-    
-    # Use the existing setup_models.sh functions
-    source /scripts/setup_models.sh
-    download_models_enhanced
 }
 
 # Run module
