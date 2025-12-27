@@ -40,10 +40,38 @@ log_info "GPU: ${GPU_TYPE}"
 # RUN MODULES
 # =============================================================================
 
-# Run all modules in numerical order
+# Run modules in order, with parallel execution for models + nodes
 for module in "$SCRIPT_DIR"/modules/*.sh; do
     if [[ -f "$module" ]]; then
         module_name=$(basename "$module" .sh)
+        
+        # Run 06_models and 07_nodes in parallel
+        if [[ "$module_name" == "06_models" ]]; then
+            log_step "Module: 06_models + 07_nodes (parallel)"
+            
+            # Start models in background
+            (source "$module") &
+            local models_pid=$!
+            
+            # Start nodes in background
+            local nodes_module="$SCRIPT_DIR/modules/07_nodes.sh"
+            if [[ -f "$nodes_module" ]]; then
+                (source "$nodes_module") &
+                local nodes_pid=$!
+            fi
+            
+            # Wait for both
+            wait $models_pid || log_warn "Models setup had issues"
+            wait $nodes_pid 2>/dev/null || log_warn "Nodes setup had issues"
+            
+            continue
+        fi
+        
+        # Skip 07_nodes (already handled above)
+        if [[ "$module_name" == "07_nodes" ]]; then
+            continue
+        fi
+        
         log_step "Module: $module_name"
         
         # Source module (shares state, can use lib functions)

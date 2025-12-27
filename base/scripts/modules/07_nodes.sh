@@ -16,27 +16,42 @@ install_single_node() {
     
     if [[ ! -d "$node_path" ]]; then
         echo "[NODES] ⬇️ Cloning $node_name..."
-        if git clone --depth 1 -b "$branch" "$repo_url" "$node_path" >/dev/null 2>&1; then
-            echo "[NODES] ✅ Installed: $node_name"
-        else
-            echo "[NODES] ❌ Failed: $node_name"
-            return 1
-        fi
+        
+        # Retry logic (3 attempts)
+        local attempt
+        for attempt in 1 2 3; do
+            if git clone --depth 1 -b "$branch" "$repo_url" "$node_path" >/dev/null 2>&1; then
+                echo "[NODES] ✅ Installed: $node_name"
+                break
+            else
+                if [[ $attempt -lt 3 ]]; then
+                    echo "[NODES] ⚠️ Retry $attempt/3: $node_name"
+                    sleep 2
+                else
+                    echo "[NODES] ❌ Failed after 3 attempts: $node_name"
+                    return 1
+                fi
+            fi
+        done
     else
         echo "[NODES] ⏭️ Exists: $node_name"
     fi
 
-    # Install requirements (show errors)
+    # Install requirements (check exit code properly)
     if [[ -f "$node_path/requirements.txt" ]]; then
-        if ! "$VENV_PATH/bin/uv" pip install --python "$VENV_PATH/bin/python" \
-            -r "$node_path/requirements.txt" 2>&1 | grep -iE "error|failed|warning" || true; then
-            : # Requirements installed silently
+        if ! "$VENV_PATH/bin/uv" pip install --quiet --python "$VENV_PATH/bin/python" \
+            -r "$node_path/requirements.txt" 2>&1; then
+            echo "[NODES] ⚠️ Deps failed: $node_name"
         fi
     fi
     
     # Run install script if present
     if [[ -f "$node_path/install.py" ]]; then
-        (cd "$node_path" && "$VENV_PATH/bin/python" install.py 2>&1 | grep -iE "error|failed" || true)
+        if ! (cd "$node_path" && "$VENV_PATH/bin/python" install.py 2>&1 | grep -iE "error" >/dev/null); then
+            : # install.py succeeded or no errors
+        else
+            echo "[NODES] ⚠️ install.py issues: $node_name"
+        fi
     fi
 }
 export -f install_single_node
@@ -84,9 +99,9 @@ install_nodes_from_yaml() {
     node_list=$(mktemp)
     
     yaml_list "$config" "nodes" | while read -r item; do
-        local repo branch
-        repo=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('repo',''))")
-        branch=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('branch','main'))")
+        # Use jq for fast JSON parsing
+        local repo=$(echo "$item" | jq -r '.repo // ""')
+        local branch=$(echo "$item" | jq -r '.branch // "main"')
         
         if [[ -n "$repo" ]]; then
             echo "$repo $branch $nodes_dir" >> "$node_list"

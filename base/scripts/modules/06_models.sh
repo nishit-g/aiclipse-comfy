@@ -89,16 +89,18 @@ download_from_yaml() {
     python_manifest=$(mktemp)
     local model_count=0
     
-    # Parse YAML and generate download lists
+    # Parse YAML and generate download lists (use jq for fast JSON parsing)
     yaml_list "$config" "models" | while read -r item; do
-        local source repo file path key
-        source=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('source',''))")
+        # Use jq for fast JSON parsing (single call per field)
+        local source=$(echo "$item" | jq -r '.source // "huggingface"')
         
         case "$source" in
             huggingface|hf)
-                repo=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('repo',''))")
-                file=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('file',''))")
-                path=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('path',''))")
+                local repo=$(echo "$item" | jq -r '.repo // ""')
+                local file=$(echo "$item" | jq -r '.file // ""')
+                local path=$(echo "$item" | jq -r '.path // ""')
+                
+                [[ -z "$repo" || -z "$file" ]] && continue
                 
                 local target_file="$MODELS_DIR/$path/$file"
                 if [[ -f "$target_file" ]]; then
@@ -107,7 +109,7 @@ download_from_yaml() {
                     continue
                 fi
                 
-                log_info "📥 Queued: $file from $repo"
+                log_info "📥 Queued: $file"
                 
                 local url="https://huggingface.co/${repo}/resolve/main/${file}"
                 
@@ -121,11 +123,13 @@ download_from_yaml() {
                 model_count=$((model_count + 1))
                 ;;
             r2|cloudflare)
-                key=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('key',''))")
-                file=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('file',''))")
-                path=$(echo "$item" | python3 -c "import json,sys; print(json.load(sys.stdin).get('path',''))")
+                local key=$(echo "$item" | jq -r '.key // ""')
+                local file=$(echo "$item" | jq -r '.file // ""')
+                local path=$(echo "$item" | jq -r '.path // ""')
                 
-                log_info "📥 Queued: $file from R2"
+                [[ -z "$key" || -z "$file" ]] && continue
+                
+                log_info "📥 Queued: $file (R2)"
                 echo "r2|$key|$file|$path" >> "$python_manifest"
                 model_count=$((model_count + 1))
                 ;;
