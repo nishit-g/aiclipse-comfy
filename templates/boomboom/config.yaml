@@ -62,23 +62,13 @@ models:
     path: text_encoders
     
   # ---------------------------------------------------------------------------
-  # LORAS (from R2)
+  # LORAS
   # ---------------------------------------------------------------------------
-  
-  - source: r2
-    key: loras/v9_xelios_it.safetensors
-    file: v9_xelios_it.safetensors
-    path: loras
-    
-  - source: r2
-    key: loras/v12_xelios_it.safetensors
-    file: v12_xelios_it.safetensors
-    path: loras
-    
-  - source: r2
-    key: loras/v12_xelios_it_5250.safetensors
-    file: v12_xelios_it_5250.safetensors
-    path: loras
+  # Add R2 models here when credentials are configured:
+  # - source: r2
+  #   key: loras/your_lora.safetensors
+  #   file: your_lora.safetensors
+  #   path: loras
 
 # ==============================================================================
 # Custom Nodes
