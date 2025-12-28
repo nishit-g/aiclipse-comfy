@@ -155,9 +155,9 @@ _gpu = get_modal_gpu(_config)
     timeout=3600,
     scaledown_window=300,
     min_containers=0,
+    max_containers=1,  # ComfyUI is stateful, only 1 container needed
     enable_memory_snapshot=True,
 )
-@modal.concurrent(max_inputs=5)
 class ComfyUI:
     """
     Best-in-class ComfyUI server.
@@ -166,6 +166,9 @@ class ComfyUI:
     - Sets proper env vars for start.sh
     - Uses pre-downloaded models from Volume
     - Memory snapshots for fast cold starts
+    
+    Note: No @concurrent decorator - ComfyUI is a stateful web server
+    that handles its own request queuing internally.
     """
     
     @modal.enter()
