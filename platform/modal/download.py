@@ -303,7 +303,8 @@ models_volume = modal.Volume.from_name("aiclipse-models", create_if_missing=True
 download_image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("aria2", "curl")
-    .pip_install("pyyaml", "boto3")
+    .pip_install("pyyaml", "boto3", "huggingface-hub")
+    .env({"HF_XET_HIGH_PERFORMANCE": "1"})  # Fast HF downloads
     .add_local_dir(
         str(Path(__file__).parent.parent.parent / "templates"),
         remote_path="/templates",

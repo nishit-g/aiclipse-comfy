@@ -128,7 +128,8 @@ workflows_volume = modal.Volume.from_name("aiclipse-workflows", create_if_missin
 def get_image(template: str) -> modal.Image:
     """Get GHCR image for template."""
     ghcr_url = TEMPLATE_IMAGES.get(template, TEMPLATE_IMAGES["boomboom"])
-    return modal.Image.from_registry(ghcr_url, add_python="3.12").entrypoint([])
+    # Don't add_python - GHCR image already has Python
+    return modal.Image.from_registry(ghcr_url).entrypoint([])
 
 
 def get_volume_mounts():
@@ -156,7 +157,7 @@ _gpu = get_modal_gpu(_config)
     scaledown_window=300,
     min_containers=0,
     max_containers=1,  # ComfyUI is stateful, only 1 container needed
-    enable_memory_snapshot=True,
+    enable_memory_snapshot=True,  # Snapshot for faster cold starts
 )
 class ComfyUI:
     """
