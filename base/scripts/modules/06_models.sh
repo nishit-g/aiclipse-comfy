@@ -12,6 +12,46 @@ setup_model_paths() {
     
     local comfy_models="$COMFY_DIR/models"
     
+    # =========================================================================
+    # MODAL VOLUME INTEGRATION
+    # If MODAL_MODELS_PATH is set (by Modal serve.py), check for pre-downloaded models
+    # =========================================================================
+    if [[ -n "${MODAL_MODELS_PATH:-}" && -d "$MODAL_MODELS_PATH" ]]; then
+        log_info "Modal Volume detected at $MODAL_MODELS_PATH"
+        
+        # Check if Volume has models
+        local volume_model_count=$(find "$MODAL_MODELS_PATH" -name "*.safetensors" 2>/dev/null | wc -l)
+        
+        if [[ "$volume_model_count" -gt 0 ]]; then
+            log_success "Found $volume_model_count pre-downloaded models in Modal Volume"
+            
+            # Create symlinks from Volume subdirs to MODELS_DIR
+            for subdir in checkpoints unet vae loras text_encoders embeddings controlnet diffusion_models clip upscale_models; do
+                local vol_subdir="$MODAL_MODELS_PATH/$subdir"
+                local models_subdir="$MODELS_DIR/$subdir"
+                
+                if [[ -d "$vol_subdir" ]] && [[ -n "$(ls -A "$vol_subdir" 2>/dev/null)" ]]; then
+                    ensure_dir "$(dirname "$models_subdir")"
+                    
+                    if [[ -L "$models_subdir" ]]; then
+                        rm "$models_subdir"
+                    elif [[ -d "$models_subdir" ]]; then
+                        rm -rf "$models_subdir"
+                    fi
+                    
+                    ln -sfn "$vol_subdir" "$models_subdir"
+                    local file_count=$(ls -1 "$vol_subdir" 2>/dev/null | wc -l)
+                    log_info "🔗 Linked: $subdir ($file_count files from Modal Volume)"
+                fi
+            done
+            
+            # Skip downloads since we have pre-cached models
+            export SKIP_MODEL_DOWNLOAD=true
+            log_success "Using pre-downloaded models from Modal Volume"
+        fi
+    fi
+    # =========================================================================
+    
     # Already linked?
     if [[ -L "$comfy_models" && "$(readlink "$comfy_models")" == "$MODELS_DIR" ]]; then
         log_info "Models directory already linked"
@@ -36,6 +76,12 @@ setup_model_paths() {
 }
 
 download_models() {
+    # Check if we should skip downloads (set by Modal Volume integration)
+    if is_true "${SKIP_MODEL_DOWNLOAD:-false}"; then
+        log_success "Skipping model downloads - using pre-downloaded models from Modal Volume"
+        return 0
+    fi
+    
     if ! is_true "${DOWNLOAD_MODELS:-true}"; then
         log_info "Model downloads disabled (DOWNLOAD_MODELS=false)"
         return 0

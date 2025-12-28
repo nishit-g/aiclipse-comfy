@@ -1,0 +1,122 @@
+[
+  {
+    "name": "ComfyUI-Manager",
+    "description": "Essential node manager - install this first",
+    "priority": "critical",
+    "category": "management"
+  },
+  {
+    "name": "was-node-suite-comfyui",
+    "description": "WAS Node Suite - Extended nodes for ComfyUI",
+    "priority": "high",
+    "category": "image_processing"
+  },
+  {
+    "name": "ComfyUI_IPAdapter_plus",
+    "description": "ComfyUI reference implementation for IPAdapter models by cubiq",
+    "priority": "high",
+    "category": "conditioning"
+  },
+  {
+    "name": "rgthree-comfy",
+    "description": "Nodes: Seed, Reroute, Context, Lora Loader Stack, Context Switch, Fast Muter. These custom nodes helps organize the building of complex workflows.",
+    "priority": "high",
+    "category": "workflow"
+  },
+  {
+    "name": "ComfyUI-Inpaint-CropAndStitch",
+    "description": "✂️ Inpaint Crop and Stitch nodes for better inpainting workflows",
+    "priority": "high",
+    "category": "inpainting"
+  },
+  {
+    "name": "comfyui-inpaint-nodes",
+    "description": "Professional inpainting nodes by Acly",
+    "priority": "high",
+    "category": "inpainting"
+  },
+  {
+    "name": "ComfyUI-Custom-Scripts",
+    "description": "Collection of useful workflow scripts and utilities",
+    "priority": "medium",
+    "category": "utility"
+  },
+  {
+    "name": "ComfyUI_essentials",
+    "description": "Essential quality-of-life nodes for workflow improvements",
+    "priority": "high",
+    "category": "utility"
+  },
+  {
+    "name": "comfyui_controlnet_aux",
+    "description": "ControlNet auxiliary preprocessors and utilities",
+    "priority": "high",
+    "category": "control"
+  },
+  {
+    "name": "ComfyUI-Impact-Pack",
+    "description": "Advanced nodes for detailers, masks and image processing",
+    "priority": "high",
+    "category": "enhancement"
+  },
+  {
+    "name": "masquerade-nodes-comfyui",
+    "description": "Nodes for masking and inpainting",
+    "priority": "medium",
+    "category": "masking"
+  },
+  {
+    "name": "ComfyUI-KJNodes",
+    "description": "Quality-of-life nodes with color matching and transformations",
+    "priority": "medium",
+    "category": "utility"
+  },
+  {
+    "name": "ComfyUI-segment-anything",
+    "description": "Segment Anything Model (SAM) integration for precise masking",
+    "priority": "medium",
+    "category": "segmentation"
+  },
+  {
+    "name": "ComfyUI-InstantID",
+    "description": "InstantID face consistency for character generation",
+    "priority": "medium",
+    "category": "face"
+  },
+  {
+    "name": "ComfyUI-VideoHelperSuite",
+    "description": "Comprehensive video processing and manipulation tools",
+    "priority": "low",
+    "category": "video"
+  },
+  {
+    "name": "ComfyUI-AnimateDiff-Evolved",
+    "description": "Advanced animation generation with AnimateDiff",
+    "priority": "low",
+    "category": "animation"
+  },
+  {
+    "name": "ComfyUI-Logic",
+    "description": "Logical operations and conditional nodes for complex workflows",
+    "priority": "medium",
+    "category": "logic"
+  },
+  {
+    "name": "ComfyUI-Advanced-ControlNet",
+    "description": "Advanced ControlNet implementations and union support",
+    "priority": "medium",
+    "category": "control"
+  },
+  {
+    "name": "ComfyUI-FaceAnalysis",
+    "description": "Face detection and analysis tools",
+    "priority": "low",
+    "category": "analysis"
+  },
+  {
+    "name": "ComfyUI-Inspire-Pack",
+    "description": "Various utility nodes for workflow enhancement",
+    "priority": "low",
+    "category": "utility"
+  }
+]
