@@ -3,12 +3,14 @@ FROM ${BASE_IMAGE}
 
 # Install ComfyUI v0.6.0 via Git
 # We clone directly to the target directory
-RUN git clone --depth 1 --branch v0.6.0 https://github.com/comfyanonymous/ComfyUI.git /workspace/aiclipse/ComfyUI && \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    git clone --depth 1 --branch v0.6.0 https://github.com/comfyanonymous/ComfyUI.git /workspace/aiclipse/ComfyUI && \
     cd /workspace/aiclipse/ComfyUI && \
     /venv/bin/uv pip install --no-cache-dir -r requirements.txt
 
 # Install ComfyUI Manager
-RUN git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git /workspace/aiclipse/ComfyUI/custom_nodes/ComfyUI-Manager && \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git /workspace/aiclipse/ComfyUI/custom_nodes/ComfyUI-Manager && \
     cd /workspace/aiclipse/ComfyUI/custom_nodes/ComfyUI-Manager && \
     /venv/bin/uv pip install --no-cache-dir -r requirements.txt
 

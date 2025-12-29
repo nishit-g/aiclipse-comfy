@@ -37,7 +37,7 @@ on:
 
 env:
   REGISTRY: ghcr.io/${{ github.repository_owner }}
-  VERSION: ${{ github.ref_name || 'latest' }}
+  VERSION: ${{ github.ref_name == 'main' && 'latest' || github.ref_name }}
   CACHE_TYPE: registry
 
 jobs:
@@ -86,6 +86,13 @@ jobs:
           if git diff --name-only HEAD^ HEAD | grep '^base/rtx5090.dockerfile'; then
             BASE_5090_CHANGED="true"
             echo "🔥 Base RTX 5090 changed"
+          fi
+
+          # 4. Check ComfyUI Base Layer (Affects all templates)
+          if git diff --name-only HEAD^ HEAD | grep '^base/02-comfyui.dockerfile'; then
+            BASE_4090_CHANGED="true"
+            BASE_5090_CHANGED="true"
+            echo "🔥 ComfyUI Base changed (Rebuild ComfyUI + Templates)"
           fi
 
           # 4. Check Templates
@@ -316,15 +323,75 @@ jobs:
           fi
           docker buildx bake base-rtx5090 --push $EXTRA_ARGS
 
-  # ✅ Boomboom template
-  build-boomboom:
+  # ✅ ComfyUI Base RTX 4090 - Layer 2 (Baked ComfyUI)
+  build-comfyui-base-rtx4090:
+    runs-on: ubuntu-latest
+    needs: [determine-builds, build-base-rtx4090]
+    if: |
+      always() &&
+      !cancelled() &&
+      needs.determine-builds.outputs.should-build-base-rtx4090 == 'true' &&
+      (needs.build-base-rtx4090.result == 'success' || needs.build-base-rtx4090.result == 'skipped')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push comfyui-base-rtx4090
+        run: |
+          EXTRA_ARGS=""
+          if [ "${{ inputs.force_rebuild }}" = "true" ]; then
+            EXTRA_ARGS="--no-cache"
+          fi
+          docker buildx bake comfyui-base-rtx4090 --push $EXTRA_ARGS
+
+  # ✅ ComfyUI Base RTX 5090 - Layer 2 (Baked ComfyUI)
+  build-comfyui-base-rtx5090:
     runs-on: ubuntu-latest
     needs: [determine-builds, build-base-rtx5090]
     if: |
       always() &&
       !cancelled() &&
-      needs.determine-builds.outputs.should-build-boomboom == 'true' &&
+      needs.determine-builds.outputs.should-build-base-rtx5090 == 'true' &&
       (needs.build-base-rtx5090.result == 'success' || needs.build-base-rtx5090.result == 'skipped')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push comfyui-base-rtx5090
+        run: |
+          EXTRA_ARGS=""
+          if [ "${{ inputs.force_rebuild }}" = "true" ]; then
+            EXTRA_ARGS="--no-cache"
+          fi
+          docker buildx bake comfyui-base-rtx5090 --push $EXTRA_ARGS
+
+  # ✅ Boomboom template
+  build-boomboom:
+    runs-on: ubuntu-latest
+    needs: [determine-builds, build-comfyui-base-rtx5090]
+    if: |
+      always() &&
+      !cancelled() &&
+      needs.determine-builds.outputs.should-build-boomboom == 'true' &&
+      (needs.build-comfyui-base-rtx5090.result == 'success' || needs.build-comfyui-base-rtx5090.result == 'skipped')
     permissions:
       contents: read
       packages: write
@@ -349,12 +416,12 @@ jobs:
   # ✅ Qwen Multi-Edit template
   build-qwen-multi-edit:
     runs-on: ubuntu-latest
-    needs: [determine-builds, build-base-rtx5090]
+    needs: [determine-builds, build-comfyui-base-rtx5090]
     if: |
       always() &&
       !cancelled() &&
       needs.determine-builds.outputs.should-build-qwen-multi-edit == 'true' &&
-      (needs.build-base-rtx5090.result == 'success' || needs.build-base-rtx5090.result == 'skipped')
+      (needs.build-comfyui-base-rtx5090.result == 'success' || needs.build-comfyui-base-rtx5090.result == 'skipped')
     permissions:
       contents: read
       packages: write
@@ -379,7 +446,7 @@ jobs:
   # ✅ Summary job
   build-summary:
     runs-on: ubuntu-latest
-    needs: [determine-builds, build-base-common, build-base-rtx4090, build-base-rtx5090, build-boomboom, build-qwen-multi-edit]
+    needs: [determine-builds, build-base-common, build-base-rtx4090, build-base-rtx5090, build-comfyui-base-rtx4090, build-comfyui-base-rtx5090, build-boomboom, build-qwen-multi-edit]
     if: always()
     steps:
       - name: Build Summary
@@ -392,5 +459,7 @@ jobs:
           echo "- build-base-common: ${{ needs.build-base-common.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- build-base-rtx4090: ${{ needs.build-base-rtx4090.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- build-base-rtx5090: ${{ needs.build-base-rtx5090.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- build-comfyui-base-rtx4090: ${{ needs.build-comfyui-base-rtx4090.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- build-comfyui-base-rtx5090: ${{ needs.build-comfyui-base-rtx5090.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- build-boomboom: ${{ needs.build-boomboom.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- build-qwen-multi-edit: ${{ needs.build-qwen-multi-edit.result }}" >> $GITHUB_STEP_SUMMARY
