@@ -198,6 +198,14 @@ class ComfyUI:
             print(f"[MODAL] COMFY_ARGS: {os.environ['COMFY_ARGS']}")
         
         # =====================================================================
+        # COMMENTED OUT: Brace expansion fix no longer needed
+        # The common.dockerfile has been fixed to not create model directories.
+        # ComfyUI creates its own models/ subdirs, and extra_model_paths.yaml
+        # points to the Modal Volume for external models.
+        # =====================================================================
+        # self._fix_brace_expansion_bug()  # Disabled - Docker build fixed
+        
+        # =====================================================================
         # VOLUME INTEGRATION
         # Set paths for start.sh to discover pre-downloaded models
         # =====================================================================
@@ -231,6 +239,80 @@ class ComfyUI:
         
         print("=" * 60)
     
+    def _fix_brace_expansion_bug(self):
+        """
+        Fix directories created with literal brace syntax due to Dockerfile bug.
+        Old images created dirs like "{ComfyUI,models}" instead of separate dirs.
+        """
+        import shutil
+        
+        print("[MODAL] 🔧 Running brace expansion fix...")
+        
+        workspace = Path("/workspace/aiclipse")
+        comfy_models = Path("/workspace/aiclipse/models")
+        comfy_dir = Path("/workspace/aiclipse/ComfyUI")
+        
+        # Debug: show what exists in workspace
+        if workspace.exists():
+            print(f"[MODAL] 📂 Contents of {workspace}:")
+            for item in sorted(workspace.iterdir()):
+                print(f"[MODAL]    - {item.name} ({'dir' if item.is_dir() else 'file'})")
+        
+        # Check for and remove malformed brace directories
+        brace_patterns = [
+            (workspace, "{ComfyUI,models,workflows,output,logs,temp}"),
+            (comfy_models, "{checkpoints,diffusion_models,vae,loras,clip,controlnet,upscale_models,embeddings}"),
+        ]
+        
+        fixed = False
+        for parent, bad_name in brace_patterns:
+            bad_path = parent / bad_name
+            if bad_path.exists():
+                print(f"[MODAL] 🔧 Removing malformed directory: {bad_path}")
+                shutil.rmtree(bad_path, ignore_errors=True)
+                fixed = True
+        
+        # Create proper directory structure
+        workspace_dirs = ["ComfyUI", "models", "workflows", "output", "logs", "temp"]
+        for d in workspace_dirs:
+            (workspace / d).mkdir(parents=True, exist_ok=True)
+        print(f"[MODAL] ✅ Created workspace directories: {workspace_dirs}")
+        
+        model_dirs = [
+            "checkpoints", "diffusion_models", "vae", "loras", "clip",
+            "controlnet", "upscale_models", "embeddings", "unet",
+            "text_encoders", "hypernetworks", "clip_vision", "style_models", "gligen"
+        ]
+        for d in model_dirs:
+            (comfy_models / d).mkdir(parents=True, exist_ok=True)
+        print(f"[MODAL] ✅ Created {len(model_dirs)} model directories")
+        
+        # Debug: show models dir contents now
+        if comfy_models.exists():
+            print(f"[MODAL] 📂 Contents of {comfy_models}:")
+            for item in sorted(comfy_models.iterdir()):
+                print(f"[MODAL]    - {item.name}")
+        
+        # Ensure ComfyUI models symlink points to our models dir
+        comfy_models_link = comfy_dir / "models"
+        if comfy_models_link.exists() and not comfy_models_link.is_symlink():
+            # It's a real directory, move contents and replace with symlink
+            print(f"[MODAL] 🔧 Converting ComfyUI/models to symlink")
+            for item in comfy_models_link.iterdir():
+                dest = comfy_models / item.name
+                if not dest.exists():
+                    shutil.move(str(item), str(dest))
+            shutil.rmtree(comfy_models_link)
+        
+        if not comfy_models_link.exists():
+            comfy_models_link.symlink_to(comfy_models)
+            print(f"[MODAL] 🔗 Created symlink: {comfy_models_link} → {comfy_models}")
+        elif comfy_models_link.is_symlink():
+            print(f"[MODAL] 🔗 Symlink exists: {comfy_models_link} → {comfy_models_link.resolve()}")
+        
+        if fixed:
+            print("[MODAL] ✅ Fixed brace expansion bug from old Docker image")
+    
     def _setup_extra_model_paths(self):
         """
         Create extra_model_paths.yaml for ComfyUI to find Volume models.
@@ -243,9 +325,10 @@ class ComfyUI:
         yaml_path = comfy_dir / "extra_model_paths.yaml"
         
         # Model type mappings: ComfyUI name -> Volume subdir
+        # List ALL model types that ComfyUI supports - UI needs them all
         model_mappings = {
             "checkpoints": "checkpoints",
-            "unet": "unet",  # Same as diffusion_models in some workflows
+            "unet": "unet",
             "diffusion_models": "diffusion_models",
             "vae": "vae",
             "loras": "loras",
@@ -254,16 +337,24 @@ class ComfyUI:
             "embeddings": "embeddings",
             "controlnet": "controlnet",
             "upscale_models": "upscale_models",
+            "hypernetworks": "hypernetworks",
+            "clip_vision": "clip_vision",
+            "style_models": "style_models",
+            "gligen": "gligen",
         }
         
-        # Build config only for existing non-empty dirs
+        # Build config with ALL model types - create empty dirs if needed
         config = {"modal_volume": {"base_path": str(volume_models)}}
         
         for model_type, subdir in model_mappings.items():
             vol_path = volume_models / subdir
-            if vol_path.exists() and any(vol_path.iterdir()):
-                config["modal_volume"][model_type] = subdir
-                file_count = len(list(vol_path.glob("*")))
+            # Create dir if it doesn't exist (ComfyUI UI needs all folders)
+            vol_path.mkdir(parents=True, exist_ok=True)
+            config["modal_volume"][model_type] = subdir
+            
+            # Log if folder has content
+            file_count = len(list(vol_path.glob("*")))
+            if file_count > 0:
                 print(f"[MODAL] 🔗 Linked {subdir}/ ({file_count} files)")
         
         # Write YAML config

@@ -54,23 +54,31 @@ RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/
     echo "PermitUserEnvironment yes" >> /etc/ssh/sshd_config && \
     mkdir -p /run/sshd
 
-# Create workspace structure (explicit paths - brace expansion doesn't work in /bin/sh)
-RUN mkdir -p /workspace/aiclipse/ComfyUI \
-    /workspace/aiclipse/models \
-    /workspace/aiclipse/workflows \
-    /workspace/aiclipse/output \
-    /workspace/aiclipse/logs \
-    /workspace/aiclipse/temp && \
-    mkdir -p /workspace/aiclipse/models/checkpoints \
-    /workspace/aiclipse/models/diffusion_models \
-    /workspace/aiclipse/models/vae \
-    /workspace/aiclipse/models/loras \
-    /workspace/aiclipse/models/clip \
-    /workspace/aiclipse/models/controlnet \
-    /workspace/aiclipse/models/upscale_models \
-    /workspace/aiclipse/models/embeddings \
-    /workspace/aiclipse/models/text_encoders \
-    /workspace/aiclipse/models/unet
+# Create workspace structure (minimal - ComfyUI creates its own models/ subdirs)
+# NOTE: Model directories are NOT needed here because:
+#   1. ComfyUI automatically creates models/checkpoints, models/loras, etc. on startup
+#   2. extra_model_paths.yaml points ComfyUI to external model locations (Modal Volume)
+#   3. The 02-comfyui.dockerfile clones ComfyUI which already has a models/ dir
+RUN mkdir -p /workspace/aiclipse/logs /workspace/aiclipse/temp
+
+# COMMENTED OUT: Redundant model directory creation
+# These were causing issues with extra_model_paths.yaml and symlinks
+# RUN mkdir -p /workspace/aiclipse/ComfyUI \
+#     /workspace/aiclipse/models \
+#     /workspace/aiclipse/workflows \
+#     /workspace/aiclipse/output \
+#     /workspace/aiclipse/logs \
+#     /workspace/aiclipse/temp && \
+#     mkdir -p /workspace/aiclipse/models/checkpoints \
+#     /workspace/aiclipse/models/diffusion_models \
+#     /workspace/aiclipse/models/vae \
+#     /workspace/aiclipse/models/loras \
+#     /workspace/aiclipse/models/clip \
+#     /workspace/aiclipse/models/controlnet \
+#     /workspace/aiclipse/models/upscale_models \
+#     /workspace/aiclipse/models/embeddings \
+#     /workspace/aiclipse/models/text_encoders \
+#     /workspace/aiclipse/models/unet
 
 # Set default environment variables
 ENV DOWNLOAD_MODELS=true

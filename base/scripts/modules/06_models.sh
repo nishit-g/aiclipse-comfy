@@ -22,6 +22,7 @@ setup_model_paths() {
     # =========================================================================
     # MODAL VOLUME INTEGRATION
     # If MODAL_MODELS_PATH is set (by Modal serve.py), check for pre-downloaded models
+    # NOTE: We use extra_model_paths.yaml (created by serve.py) instead of symlinks
     # =========================================================================
     if [[ -n "${MODAL_MODELS_PATH:-}" && -d "$MODAL_MODELS_PATH" ]]; then
         log_info "Modal Volume detected at $MODAL_MODELS_PATH"
@@ -32,29 +33,33 @@ setup_model_paths() {
         if [[ "$volume_model_count" -gt 0 ]]; then
             log_success "Found $volume_model_count pre-downloaded models in Modal Volume"
             
-            # Create symlinks from Volume subdirs to MODELS_DIR
-            for subdir in checkpoints unet vae loras text_encoders embeddings controlnet diffusion_models clip upscale_models; do
-                local vol_subdir="$MODAL_MODELS_PATH/$subdir"
-                local models_subdir="$MODELS_DIR/$subdir"
-                
-                if [[ -d "$vol_subdir" ]] && [[ -n "$(ls -A "$vol_subdir" 2>/dev/null)" ]]; then
-                    ensure_dir "$(dirname "$models_subdir")"
-                    
-                    if [[ -L "$models_subdir" ]]; then
-                        rm "$models_subdir"
-                    elif [[ -d "$models_subdir" ]]; then
-                        rm -rf "$models_subdir"
-                    fi
-                    
-                    ln -sfn "$vol_subdir" "$models_subdir"
-                    local file_count=$(ls -1 "$vol_subdir" 2>/dev/null | wc -l)
-                    log_info "🔗 Linked: $subdir ($file_count files from Modal Volume)"
-                fi
-            done
+            # COMMENTED OUT: Symlink creation
+            # We now use extra_model_paths.yaml instead of symlinks for Modal
+            # The yaml points ComfyUI directly to /modal-volumes/models
+            # This avoids conflicts between symlinks and ComfyUI's own models/ dir
+            #
+            # for subdir in checkpoints unet vae loras text_encoders embeddings controlnet diffusion_models clip upscale_models; do
+            #     local vol_subdir="$MODAL_MODELS_PATH/$subdir"
+            #     local models_subdir="$MODELS_DIR/$subdir"
+            #     
+            #     if [[ -d "$vol_subdir" ]] && [[ -n "$(ls -A "$vol_subdir" 2>/dev/null)" ]]; then
+            #         ensure_dir "$(dirname "$models_subdir")"
+            #         
+            #         if [[ -L "$models_subdir" ]]; then
+            #             rm "$models_subdir"
+            #         elif [[ -d "$models_subdir" ]]; then
+            #             rm -rf "$models_subdir"
+            #         fi
+            #         
+            #         ln -sfn "$vol_subdir" "$models_subdir"
+            #         local file_count=$(ls -1 "$vol_subdir" 2>/dev/null | wc -l)
+            #         log_info "🔗 Linked: $subdir ($file_count files from Modal Volume)"
+            #     fi
+            # done
             
             # Skip downloads since we have pre-cached models
             export SKIP_MODEL_DOWNLOAD=true
-            log_success "Using pre-downloaded models from Modal Volume"
+            log_success "Using pre-downloaded models from Modal Volume (via extra_model_paths.yaml)"
         fi
     fi
     # =========================================================================
