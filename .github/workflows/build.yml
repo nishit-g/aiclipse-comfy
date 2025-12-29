@@ -177,8 +177,19 @@ jobs:
               BUILD_QWEN_MULTI_EDIT=true
               ;;
             "changed-files")
-              # 1. Base Common Changed -> Rebuild EVERYTHING
-              if [[ "$BASE_COMMON_CHANGED" == "true" ]]; then
+              # For workflow_dispatch, changed-files doesn't make sense
+              # because there's no push to compare against
+              if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+                echo "⚠️ workflow_dispatch with changed-files: building all (no push to compare)"
+                BUILD_BASE_COMMON=true
+                BUILD_BASE_RTX4090=true
+                BUILD_BASE_RTX5090=true
+                BUILD_BOOMBOOM=true
+                BUILD_SD15_4090=false
+                BUILD_SD15_5090=false
+                BUILD_QWEN_MULTI_EDIT=true
+              # For push events, check what actually changed
+              elif [[ "$BASE_COMMON_CHANGED" == "true" ]]; then
                 BUILD_BASE_COMMON=true
                 BUILD_BASE_RTX4090=true
                 BUILD_BASE_RTX5090=true
