@@ -1,13 +1,23 @@
 ARG CUDA_VERSION=12.4.1
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn-runtime-ubuntu22.04
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
-ENV PATH="/venv/bin:$PATH"
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /bin/uv
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg \
+    PATH="/venv/bin:$PATH" \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_DOWNLOADS=never
 
 # Install system dependencies
-RUN apt-get update && apt-get upgrade -y && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean && \
+    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache && \
+    apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     software-properties-common gpg-agent \
     && add-apt-repository ppa:deadsnakes/ppa \
@@ -16,21 +26,19 @@ RUN apt-get update && apt-get upgrade -y && \
     git python3.12 python3.12-venv python3.12-dev \
     build-essential wget curl htop tmux nano vim \
     openssh-server nginx ca-certificates \
-    ffmpeg jq aria2 rsync inotify-tools \
-    && rm -rf /var/lib/apt/lists/*
+    ffmpeg jq aria2 rsync inotify-tools
 
 # Python setup with base virtual environment
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
-    update-alternatives --set python3 /usr/bin/python3.12 && \
-    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
+    update-alternatives --set python3 /usr/bin/python3.12
 
 # Create virtual environment and install ALL Python packages
 # Consolidated for better caching and fewer layers
-RUN python3.12 -m venv /venv && \
-    /venv/bin/pip install --no-cache-dir --upgrade pip wheel setuptools && \
-    /venv/bin/pip install --no-cache-dir \
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv venv /venv --python python3.12 && \
+    uv pip install --no-cache-dir \
     jupyterlab \
-    uv \
     huggingface-hub \
     safetensors \
     accelerate \

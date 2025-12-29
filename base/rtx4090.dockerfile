@@ -8,9 +8,11 @@ ENV TORCH_VERSION="2.6.0+cu124"
 ENV XFORMERS_VERSION="0.0.29.post3"
 
 # Install PyTorch and GPU-specific packages
-RUN /venv/bin/pip install --no-cache-dir \
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --no-cache-dir \
     torch=="${TORCH_VERSION}" torchvision torchaudio --index-url ${TORCH_INDEX} && \
-    /venv/bin/pip install --no-cache-dir \
+    uv pip install --no-cache-dir \
     xformers=="${XFORMERS_VERSION}" --index-url ${TORCH_INDEX}
 
 # Copy all setup scripts

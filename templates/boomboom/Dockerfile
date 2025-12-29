@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ghcr.io/nishit-g/aiclipse-base-rtx5090:latest
+ARG BASE_IMAGE=ghcr.io/nishit-g/aiclipse-comfyui:rtx5090-latest
 FROM ${BASE_IMAGE}
 
 ENV TEMPLATE_TYPE="boomboom"
@@ -13,7 +13,12 @@ COPY workflows/ /opt/workflows/
 COPY models_manifest.txt /manifests/boomboom_models.txt
 COPY nodes_manifest.txt /manifests/boomboom_nodes.txt
 
-ENV MODELS_MANIFEST="/manifests/boomboom_models.txt"
-ENV NODES_MANIFEST="/manifests/boomboom_nodes.txt"
+ENV MODELS_MANIFEST="/manifests/boomboom_models.txt" \
+    NODES_MANIFEST="/manifests/boomboom_nodes.txt" \
+    COMFY_DIR="/workspace/aiclipse/ComfyUI"
+
+# Install custom nodes at build time
+RUN --mount=type=cache,target=/root/.cache/uv \
+    python3 /scripts/build_nodes.py
 
 CMD ["/scripts/start.sh"]

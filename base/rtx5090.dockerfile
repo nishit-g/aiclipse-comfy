@@ -10,28 +10,30 @@ ENV ENABLE_SAGE_ATTENTION=true
 ENV TORCH_CUDA_ARCH_LIST="10.0+PTX"
 
 # Upgrade to CUDA 12.8.0 for RTX 5090
-RUN apt-get update && \
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
     cuda-minimal-build-12-8 \
     libcusparse-dev-12-8 \
     libcublas-dev-12-8 \
     libcusolver-dev-12-8 \
     libcurand-dev-12-8 \
-    libcufft-dev-12-8 \
-    && rm -rf /var/lib/apt/lists/*
+    libcufft-dev-12-8
 
 # Set CUDA 12.8 paths
 ENV PATH=/usr/local/cuda-12.8/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:${LD_LIBRARY_PATH}
 
 # Install PyTorch, SageAttention and GPU-specific packages
-RUN /venv/bin/pip install --no-cache-dir \
-    torch=="${TORCH_VERSION}" torchvision torchaudio --index-url ${TORCH_INDEX}
 
-RUN /venv/bin/pip install --no-cache-dir \
-    xformers=="${XFORMERS_VERSION}" --index-url ${TORCH_INDEX}
-
-RUN /venv/bin/pip install --no-cache-dir --no-build-isolation \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --no-cache-dir \
+    torch=="${TORCH_VERSION}" torchvision torchaudio --index-url ${TORCH_INDEX} && \
+    uv pip install --no-cache-dir \
+    xformers=="${XFORMERS_VERSION}" --index-url ${TORCH_INDEX} && \
+    uv pip install --no-cache-dir --no-build-isolation \
     triton ninja sageattention
 
 # Copy all setup scripts

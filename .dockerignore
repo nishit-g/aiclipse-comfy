@@ -1,0 +1,27 @@
+# Version Control
+.git
+.gitignore
+.github
+
+# IDEs
+.idea
+.vscode
+.DS_Store
+
+# Legacy/Archive
+comfy_v1_old
+repomix-output.txt
+*.log
+*.tmp
+*.bak
+
+# Documentation (not needed in image)
+docs/
+*.md
+LICENSE
+
+# Local dev artifacts
+node_modules
+venv/
+__pycache__/
+*.pyc
