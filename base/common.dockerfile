@@ -78,3 +78,4 @@ COPY manifests/ /manifests/
 COPY base/scripts/ /scripts/
 RUN chmod +x /scripts/*.sh /scripts/*.py
 # Trigger build
+# Force full rebuild
