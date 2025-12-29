@@ -6,13 +6,13 @@ FROM ${BASE_IMAGE}
 RUN --mount=type=cache,target=/root/.cache/uv \
     git clone --depth 1 --branch v0.6.0 https://github.com/comfyanonymous/ComfyUI.git /workspace/aiclipse/ComfyUI && \
     cd /workspace/aiclipse/ComfyUI && \
-    /venv/bin/uv pip install --no-cache-dir -r requirements.txt
+    uv pip install --no-cache-dir -r requirements.txt
 
 # Install ComfyUI Manager
 RUN --mount=type=cache,target=/root/.cache/uv \
     git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git /workspace/aiclipse/ComfyUI/custom_nodes/ComfyUI-Manager && \
     cd /workspace/aiclipse/ComfyUI/custom_nodes/ComfyUI-Manager && \
-    /venv/bin/uv pip install --no-cache-dir -r requirements.txt
+    uv pip install --no-cache-dir -r requirements.txt
 
 # Configure ComfyUI Manager (Offline Mode)
 # We create the config file so it doesn't try to phone home/update on startup
