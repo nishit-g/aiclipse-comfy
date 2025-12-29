@@ -10,6 +10,13 @@ setup_model_paths() {
     
     ensure_dir "$MODELS_DIR"
     
+    # Create ALL expected model subdirectories so ComfyUI UI shows them
+    # Even empty folders need to exist for the model picker to work
+    local expected_subdirs="checkpoints unet vae loras text_encoders embeddings controlnet diffusion_models clip upscale_models ipadapter hypernetworks custom_nodes"
+    for subdir in $expected_subdirs; do
+        ensure_dir "$MODELS_DIR/$subdir"
+    done
+    
     local comfy_models="$COMFY_DIR/models"
     
     # =========================================================================
