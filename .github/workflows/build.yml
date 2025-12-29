@@ -267,11 +267,7 @@ jobs:
   build-base-rtx4090:
     runs-on: ubuntu-latest
     needs: [determine-builds, build-base-common]
-    if: |
-      always() &&
-      !cancelled() &&
-      needs.determine-builds.outputs.should-build-base-rtx4090 == 'true' &&
-      (needs.build-base-common.result == 'success' || needs.build-base-common.result == 'skipped')
+    if: needs.determine-builds.outputs.should-build-base-rtx4090 == 'true'
     permissions:
       contents: read
       packages: write
@@ -297,11 +293,7 @@ jobs:
   build-base-rtx5090:
     runs-on: ubuntu-latest
     needs: [determine-builds, build-base-common]
-    if: |
-      always() &&
-      !cancelled() &&
-      needs.determine-builds.outputs.should-build-base-rtx5090 == 'true' &&
-      (needs.build-base-common.result == 'success' || needs.build-base-common.result == 'skipped')
+    if: needs.determine-builds.outputs.should-build-base-rtx5090 == 'true'
     permissions:
       contents: read
       packages: write
@@ -327,11 +319,7 @@ jobs:
   build-comfyui-base-rtx4090:
     runs-on: ubuntu-latest
     needs: [determine-builds, build-base-rtx4090]
-    if: |
-      always() &&
-      !cancelled() &&
-      needs.determine-builds.outputs.should-build-base-rtx4090 == 'true' &&
-      (needs.build-base-rtx4090.result == 'success' || needs.build-base-rtx4090.result == 'skipped')
+    if: needs.determine-builds.outputs.should-build-base-rtx4090 == 'true'
     permissions:
       contents: read
       packages: write
@@ -357,11 +345,7 @@ jobs:
   build-comfyui-base-rtx5090:
     runs-on: ubuntu-latest
     needs: [determine-builds, build-base-rtx5090]
-    if: |
-      always() &&
-      !cancelled() &&
-      needs.determine-builds.outputs.should-build-base-rtx5090 == 'true' &&
-      (needs.build-base-rtx5090.result == 'success' || needs.build-base-rtx5090.result == 'skipped')
+    if: needs.determine-builds.outputs.should-build-base-rtx5090 == 'true'
     permissions:
       contents: read
       packages: write
@@ -387,11 +371,7 @@ jobs:
   build-boomboom:
     runs-on: ubuntu-latest
     needs: [determine-builds, build-comfyui-base-rtx5090]
-    if: |
-      always() &&
-      !cancelled() &&
-      needs.determine-builds.outputs.should-build-boomboom == 'true' &&
-      (needs.build-comfyui-base-rtx5090.result == 'success' || needs.build-comfyui-base-rtx5090.result == 'skipped')
+    if: needs.determine-builds.outputs.should-build-boomboom == 'true'
     permissions:
       contents: read
       packages: write
@@ -417,11 +397,7 @@ jobs:
   build-qwen-multi-edit:
     runs-on: ubuntu-latest
     needs: [determine-builds, build-comfyui-base-rtx5090]
-    if: |
-      always() &&
-      !cancelled() &&
-      needs.determine-builds.outputs.should-build-qwen-multi-edit == 'true' &&
-      (needs.build-comfyui-base-rtx5090.result == 'success' || needs.build-comfyui-base-rtx5090.result == 'skipped')
+    if: needs.determine-builds.outputs.should-build-qwen-multi-edit == 'true'
     permissions:
       contents: read
       packages: write
