@@ -54,9 +54,23 @@ RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/
     echo "PermitUserEnvironment yes" >> /etc/ssh/sshd_config && \
     mkdir -p /run/sshd
 
-# Create workspace structure
-RUN mkdir -p /workspace/aiclipse/{ComfyUI,models,workflows,output,logs,temp} && \
-    mkdir -p /workspace/aiclipse/models/{checkpoints,diffusion_models,vae,loras,clip,controlnet,upscale_models,embeddings}
+# Create workspace structure (explicit paths - brace expansion doesn't work in /bin/sh)
+RUN mkdir -p /workspace/aiclipse/ComfyUI \
+    /workspace/aiclipse/models \
+    /workspace/aiclipse/workflows \
+    /workspace/aiclipse/output \
+    /workspace/aiclipse/logs \
+    /workspace/aiclipse/temp && \
+    mkdir -p /workspace/aiclipse/models/checkpoints \
+    /workspace/aiclipse/models/diffusion_models \
+    /workspace/aiclipse/models/vae \
+    /workspace/aiclipse/models/loras \
+    /workspace/aiclipse/models/clip \
+    /workspace/aiclipse/models/controlnet \
+    /workspace/aiclipse/models/upscale_models \
+    /workspace/aiclipse/models/embeddings \
+    /workspace/aiclipse/models/text_encoders \
+    /workspace/aiclipse/models/unet
 
 # Set default environment variables
 ENV DOWNLOAD_MODELS=true

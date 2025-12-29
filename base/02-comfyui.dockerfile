@@ -6,7 +6,8 @@ FROM ${BASE_IMAGE}
 RUN --mount=type=cache,target=/root/.cache/uv \
     git clone --depth 1 --branch v0.6.0 https://github.com/comfyanonymous/ComfyUI.git /workspace/aiclipse/ComfyUI && \
     cd /workspace/aiclipse/ComfyUI && \
-    uv pip install --no-cache-dir -r requirements.txt
+    uv pip install --no-cache-dir -r requirements.txt && \
+    mkdir -p /workspace/aiclipse/ComfyUI/user/default/workflows
 
 # Install ComfyUI Manager via pip (integrated version)
 # Activated at runtime via: COMFY_ARGS="--enable-manager"

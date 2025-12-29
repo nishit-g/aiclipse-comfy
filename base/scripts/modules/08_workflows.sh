@@ -23,14 +23,43 @@ sync_workflows() {
     local comfy_user_workflows="$COMFY_DIR/user/default/workflows"
     ensure_dir "$comfy_user_workflows"
     
-    # Copy workflows to ComfyUI (don't overwrite user edits)
+    # Copy workflows to ComfyUI
+    # On Modal, always force-copy since there's no persistent user data
     if dir_exists "$WORKFLOWS_DIR"; then
+        local should_force=false
+        
         if is_true "${FORCE_WORKFLOW_RESET:-false}"; then
+            should_force=true
             log_warn "FORCE_WORKFLOW_RESET: Overwriting existing workflows"
+        elif [[ -n "${MODAL_MODELS_PATH:-}" ]]; then
+            # On Modal, always force since we don't persist user directory
+            should_force=true
+        fi
+        
+        if [[ "$should_force" == true ]]; then
             find "$WORKFLOWS_DIR" -name "*.json" -type f -exec cp -f {} "$comfy_user_workflows/" \;
         else
             find "$WORKFLOWS_DIR" -name "*.json" -type f -exec cp -n {} "$comfy_user_workflows/" \;
         fi
+        
+        # Create .index.json for ComfyUI workflow discovery
+        # This file lists all workflows available in the directory
+        local index_file="$comfy_user_workflows/.index.json"
+        echo "[" > "$index_file"
+        local first=true
+        for wf in "$comfy_user_workflows"/*.json; do
+            if [[ -f "$wf" && "$(basename "$wf")" != ".index.json" ]]; then
+                local name=$(basename "$wf")
+                if [[ "$first" == true ]]; then
+                    first=false
+                else
+                    echo "," >> "$index_file"
+                fi
+                echo "  \"$name\"" >> "$index_file"
+            fi
+        done
+        echo "]" >> "$index_file"
+        log_info "Created workflow index: $index_file"
     fi
     
     # Create symlinks for easy access
