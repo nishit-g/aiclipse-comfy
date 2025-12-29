@@ -10,6 +10,7 @@ gpu_requirement: 24GB
 
 # ComfyUI arguments
 comfy_args:
+  - --enable-manager
   - --highvram
   - --preview-method auto
 
@@ -74,7 +75,6 @@ models:
 # Custom Nodes
 # ==============================================================================
 nodes:
-  - repo: https://github.com/ltdrdata/ComfyUI-Manager
   - repo: https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite
     branch: main
   - repo: https://github.com/cubiq/ComfyUI_IPAdapter_plus

@@ -8,16 +8,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     cd /workspace/aiclipse/ComfyUI && \
     uv pip install --no-cache-dir -r requirements.txt
 
-# Install ComfyUI Manager
+# Install ComfyUI Manager via pip (integrated version)
+# Activated at runtime via: COMFY_ARGS="--enable-manager"
 RUN --mount=type=cache,target=/root/.cache/uv \
-    git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git /workspace/aiclipse/ComfyUI/custom_nodes/ComfyUI-Manager && \
-    cd /workspace/aiclipse/ComfyUI/custom_nodes/ComfyUI-Manager && \
-    uv pip install --no-cache-dir -r requirements.txt
-
-# Configure ComfyUI Manager (Offline Mode)
-# We create the config file so it doesn't try to phone home/update on startup
-RUN mkdir -p /workspace/aiclipse/ComfyUI/user && \
-    echo '{"network_mode": "offline"}' > /workspace/aiclipse/ComfyUI/user/manager_config.json
+    uv pip install --no-cache-dir comfyui-manager
 
 # Note: Model directories are created at runtime by 06_models.sh
 # This allows for flexibility without rebuilding the image
