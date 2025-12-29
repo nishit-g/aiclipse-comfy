@@ -9,6 +9,6 @@ ENV TEMPLATE_TYPE="qwen-multi-edit"
 
 # Copy template configuration and workflows
 COPY config.yaml /templates/qwen-multi-edit/config.yaml
-COPY workflows/ /templates/qwen-multi-edit/workflows/
+COPY workflows/ /opt/workflows/
 
 CMD ["/scripts/start.sh"]
