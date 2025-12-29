@@ -41,8 +41,8 @@ GHCR_ORG = "ghcr.io/nishit-g"
 
 # Template -> GHCR image mapping
 TEMPLATE_IMAGES = {
-    "boomboom": f"{GHCR_ORG}/aiclipse-boomboom:rtx5090-main",
-    "sd15-basic": f"{GHCR_ORG}/aiclipse-sd15-basic:rtx5090-main",
+    "boomboom": f"{GHCR_ORG}/aiclipse-boomboom:rtx5090-latest",
+    "sd15-basic": f"{GHCR_ORG}/aiclipse-sd15-basic:rtx5090-latest",
 }
 
 # GPU requirement -> Modal GPU
