@@ -36,13 +36,14 @@ from typing import Optional
 # Configuration
 # =============================================================================
 
-DEFAULT_TEMPLATE = os.environ.get("AICLIPSE_TEMPLATE", "boomboom")
+DEFAULT_TEMPLATE = os.environ.get("AICLIPSE_TEMPLATE", "qwen-multi-edit")
 GHCR_ORG = "ghcr.io/nishit-g"
 
 # Template -> GHCR image mapping
 TEMPLATE_IMAGES = {
     "boomboom": f"{GHCR_ORG}/aiclipse-boomboom:rtx5090-latest",
     "sd15-basic": f"{GHCR_ORG}/aiclipse-sd15-basic:rtx5090-latest",
+    "qwen-multi-edit": f"{GHCR_ORG}/aiclipse-qwen-multi-edit:rtx5090-latest",
 }
 
 # GPU requirement -> Modal GPU

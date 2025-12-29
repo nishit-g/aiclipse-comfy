@@ -30,20 +30,12 @@ setup_comfyui() {
     cd "$COMFY_DIR"
     log_info "Installing ComfyUI requirements..."
     
-    # ComfyUI Manager (install first so we can include its requirements)
-    local manager_dir="$COMFY_DIR/custom_nodes/ComfyUI-Manager"
-    if [[ ! -d "$manager_dir" ]]; then
-        log_info "Installing ComfyUI Manager..."
-        git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager "$manager_dir"
-    fi
+    # Note: ComfyUI-Manager is now installed via pip in the base layer (02-comfyui.dockerfile)
+    # It's activated via COMFY_ARGS="--enable-manager"
+    # No need to clone it as a custom node anymore!
     
-    # Single pip install for all requirements (faster than 3 separate calls)
-    local pip_args="-r requirements.txt einops aiohttp"
-    if file_exists "$manager_dir/requirements.txt"; then
-        pip_args="$pip_args -r $manager_dir/requirements.txt"
-    fi
-    
-    "$VENV_PATH/bin/uv" pip install --quiet --python "$VENV_PATH/bin/python" $pip_args
+    "$VENV_PATH/bin/uv" pip install --quiet --python "$VENV_PATH/bin/python" \
+        -r requirements.txt einops aiohttp
     
     log_success "ComfyUI setup complete"
 }

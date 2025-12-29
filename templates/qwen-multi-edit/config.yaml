@@ -57,10 +57,10 @@ models:
     file: Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors
     path: loras
 
-  # Lightning 8-step LoRA (better quality)
+  # Lightning 8-step LoRA V2.0 (bf16, better quality)
   - source: huggingface
-    repo: lightx2v/Qwen-Image-Edit-2511-Lightning
-    file: Qwen-Image-Edit-2511-Lightning-8steps-V1.0.safetensors
+    repo: lightx2v/Qwen-Image-Lightning
+    file: Qwen-Image-Lightning-8steps-V2.0-bf16.safetensors
     path: loras
 
   # ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ models:
 # Custom Nodes
 # ==============================================================================
 nodes:
-  - repo: https://github.com/gseth/ControlAltAI-Nodes
+  - repo: https://github.com/ControlAltAI/ComfyUI-ControlAltAI-Nodes
 
 # ==============================================================================
 # KSampler Settings Reference (from official workflow)
