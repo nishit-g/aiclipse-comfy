@@ -68,8 +68,8 @@ setup_model_paths() {
     ln -sfn "$MODELS_DIR" "$comfy_models"
     log_success "Models linked: $comfy_models → $MODELS_DIR"
     
-    # Remove obsolete extra_model_paths.yaml
-    if file_exists "$COMFY_DIR/extra_model_paths.yaml"; then
+    # Remove obsolete extra_model_paths.yaml (unless using Modal Volume)
+    if [[ -z "${MODAL_MODELS_PATH:-}" ]] && file_exists "$COMFY_DIR/extra_model_paths.yaml"; then
         rm "$COMFY_DIR/extra_model_paths.yaml"
         log_info "Removed obsolete extra_model_paths.yaml"
     fi

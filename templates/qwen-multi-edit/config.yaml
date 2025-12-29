@@ -74,8 +74,8 @@ models:
 # ==============================================================================
 # Custom Nodes
 # ==============================================================================
-nodes:
-  - repo: https://github.com/ControlAltAI/ComfyUI-ControlAltAI-Nodes
+# nodes:
+  # - repo: https://github.com/ControlAltAI/ComfyUI-ControlAltAI-Nodes
 
 # ==============================================================================
 # KSampler Settings Reference (from official workflow)

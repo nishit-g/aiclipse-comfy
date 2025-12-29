@@ -219,7 +219,7 @@ class ComfyUI:
             print(f"[MODAL] ✅ Found {model_count} pre-downloaded models in Volume")
             
             # Create symlinks from Volume to expected model paths
-            self._setup_model_symlinks()
+            self._setup_extra_model_paths()
             
             # Skip downloads since models are ready
             os.environ["SKIP_MODEL_DOWNLOAD"] = "true"
@@ -231,15 +231,55 @@ class ComfyUI:
         
         print("=" * 60)
     
+    def _setup_extra_model_paths(self):
+        """
+        Create extra_model_paths.yaml for ComfyUI to find Volume models.
+        This is more reliable than symlinks in containerized environments.
+        
+        See: https://docs.comfy.org/essentials/comfy_cli/extra-models-config
+        """
+        volume_models = Path(MODELS_VOLUME_PATH)
+        comfy_dir = Path("/workspace/aiclipse/ComfyUI")
+        yaml_path = comfy_dir / "extra_model_paths.yaml"
+        
+        # Model type mappings: ComfyUI name -> Volume subdir
+        model_mappings = {
+            "checkpoints": "checkpoints",
+            "unet": "unet",  # Same as diffusion_models in some workflows
+            "diffusion_models": "diffusion_models",
+            "vae": "vae",
+            "loras": "loras",
+            "text_encoders": "text_encoders",
+            "clip": "clip",
+            "embeddings": "embeddings",
+            "controlnet": "controlnet",
+            "upscale_models": "upscale_models",
+        }
+        
+        # Build config only for existing non-empty dirs
+        config = {"modal_volume": {"base_path": str(volume_models)}}
+        
+        for model_type, subdir in model_mappings.items():
+            vol_path = volume_models / subdir
+            if vol_path.exists() and any(vol_path.iterdir()):
+                config["modal_volume"][model_type] = subdir
+                file_count = len(list(vol_path.glob("*")))
+                print(f"[MODAL] 🔗 Linked {subdir}/ ({file_count} files)")
+        
+        # Write YAML config
+        with open(yaml_path, "w") as f:
+            yaml.dump(config, f, default_flow_style=False)
+        
+        print(f"[MODAL] ✅ Created {yaml_path}")
+    
     def _setup_model_symlinks(self):
         """
-        Symlink Volume models to ComfyUI expected paths.
-        This avoids re-downloading and uses pre-cached models.
+        Legacy approach: Symlink Volume models to ComfyUI paths.
+        Kept as fallback if extra_model_paths.yaml doesn't work.
         """
         comfy_models = Path("/workspace/aiclipse/models")
         volume_models = Path(MODELS_VOLUME_PATH)
         
-        # Model subdirectories to link
         subdirs = [
             "checkpoints", "unet", "vae", "loras", 
             "text_encoders", "embeddings", "controlnet",
@@ -251,7 +291,6 @@ class ComfyUI:
             comfy_path = comfy_models / subdir
             
             if vol_path.exists() and any(vol_path.iterdir()):
-                # Has files, create symlink
                 comfy_path.parent.mkdir(parents=True, exist_ok=True)
                 
                 if comfy_path.is_symlink():
@@ -261,7 +300,7 @@ class ComfyUI:
                 
                 comfy_path.symlink_to(vol_path)
                 file_count = len(list(vol_path.glob("*")))
-                print(f"[MODAL] 🔗 Linked {subdir}/ ({file_count} files)")
+                print(f"[MODAL] 🔗 Symlinked {subdir}/ ({file_count} files)")
     
     @modal.web_server(port=8188, startup_timeout=600)
     def serve(self):
