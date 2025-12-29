@@ -17,8 +17,6 @@ setup_model_paths() {
         ensure_dir "$MODELS_DIR/$subdir"
     done
     
-    local comfy_models="$COMFY_DIR/models"
-    
     # =========================================================================
     # MODAL VOLUME INTEGRATION
     # If MODAL_MODELS_PATH is set (by Modal serve.py), check for pre-downloaded models
@@ -64,6 +62,21 @@ setup_model_paths() {
     fi
     # =========================================================================
     
+    # =========================================================================
+    # ON MODAL: Skip symlink setup below - we use extra_model_paths.yaml instead
+    # The symlink approach (ComfyUI/models → $MODELS_DIR) conflicts with YAML approach
+    # =========================================================================
+    if [[ -n "${MODAL_MODELS_PATH:-}" ]]; then
+        log_info "Modal detected - using extra_model_paths.yaml (no symlinks)"
+        return 0
+    fi
+    
+    # =========================================================================
+    # NON-MODAL (RunPod, local): Use symlink approach
+    # =========================================================================
+    
+    local comfy_models="$COMFY_DIR/models"
+    
     # Already linked?
     if [[ -L "$comfy_models" && "$(readlink "$comfy_models")" == "$MODELS_DIR" ]]; then
         log_info "Models directory already linked"
@@ -80,10 +93,10 @@ setup_model_paths() {
     ln -sfn "$MODELS_DIR" "$comfy_models"
     log_success "Models linked: $comfy_models → $MODELS_DIR"
     
-    # Remove obsolete extra_model_paths.yaml (unless using Modal Volume)
-    if [[ -z "${MODAL_MODELS_PATH:-}" ]] && file_exists "$COMFY_DIR/extra_model_paths.yaml"; then
+    # Remove extra_model_paths.yaml on non-Modal environments (we use symlinks instead)
+    if file_exists "$COMFY_DIR/extra_model_paths.yaml"; then
         rm "$COMFY_DIR/extra_model_paths.yaml"
-        log_info "Removed obsolete extra_model_paths.yaml"
+        log_info "Removed extra_model_paths.yaml (using symlinks instead)"
     fi
 }
 
