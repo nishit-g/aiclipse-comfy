@@ -77,3 +77,4 @@ COPY manifests/ /manifests/
 # Copy enhanced scripts
 COPY base/scripts/ /scripts/
 RUN chmod +x /scripts/*.sh /scripts/*.py
+# Trigger build
