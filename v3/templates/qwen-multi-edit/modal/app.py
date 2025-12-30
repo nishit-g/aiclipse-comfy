@@ -30,9 +30,10 @@ CONFIG_PATH = TEMPLATE_DIR / "config.yaml"
 GPU_VARIANT = os.environ.get("GPU_VARIANT", "a10g")
 GPU = get_gpu_config(GPU_VARIANT)
 
-# Volume names (shared across templates so models are reused)
-MODELS_VOLUME_NAME = "aiclipse-models"
-OUTPUTS_VOLUME_NAME = "aiclipse-outputs"
+# Volume names (v2 volumes for better performance)
+# v2 benefits: unlimited files, hundreds of concurrent writers, faster commits/reloads
+MODELS_VOLUME_NAME = "aiclipse-models-v2"
+OUTPUTS_VOLUME_NAME = "aiclipse-outputs-v2"
 
 # Paths inside container
 MODELS_PATH = "/models"
@@ -142,29 +143,57 @@ def download_models():
     Run: modal run v3/templates/qwen-multi-edit/modal/app.py::download_models
     """
     import sys
+    import os
     sys.path.insert(0, "/app/shared")
     
     from aiclipse import Config, ModelDownloader
     
+    print("=" * 60)
+    print("🚀 AiClipse Model Downloader")
+    print("=" * 60)
+    print(f"📁 Target directory: {MODELS_PATH}")
+    print(f"📋 Config: /app/config.yaml")
+    print()
+    
+    # Check existing models
+    print("📊 Checking existing models...")
+    for subdir in Path(MODELS_PATH).iterdir():
+        if subdir.is_dir():
+            files = list(subdir.glob("*.safetensors"))
+            if files:
+                for f in files:
+                    size_gb = f.stat().st_size / (1024**3)
+                    print(f"   {subdir.name}/{f.name}: {size_gb:.2f} GB")
+    print()
+    
     config = Config.load("/app/config.yaml")
+    print(f"📦 Models to download: {len(config.get_all_models())}")
+    for m in config.get_all_models():
+        print(f"   - {m.repo}/{Path(m.file).name} -> {m.path}/")
+    print()
+    
     downloader = ModelDownloader(config, MODELS_PATH)
     result = downloader.download_all()
     
     # Commit volume changes
+    print("💾 Committing volume changes...")
     models_volume.commit()
     
     # Summary
-    success = sum(1 for r in results if r.success)
-    failed = sum(1 for r in results if not r.success)
-    
     print()
     print("=" * 60)
-    print(f"✅ Downloaded: {success} models")
-    if failed > 0:
-        print(f"❌ Failed: {failed} models")
+    print("📊 FINAL SUMMARY")
+    print("=" * 60)
+    print(f"✅ Downloaded: {result.downloaded} models")
+    print(f"⏭️  Skipped: {result.skipped} models (already exist)")
+    if result.failed > 0:
+        print(f"❌ Failed: {result.failed} models")
+    print(f"📦 Total Size: {result.total_gb:.2f} GB")
+    print(f"⚡ Speed: {result.speed_mbps:.1f} Mbps")
+    print(f"⏱️  Duration: {result.duration_seconds:.1f}s")
     print("=" * 60)
     
-    return {"success": success, "failed": failed}
+    return {"downloaded": result.downloaded, "skipped": result.skipped, "failed": result.failed}
 
 
 # =============================================================================
