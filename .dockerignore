@@ -1,27 +1,36 @@
 # Version Control
 .git
 .gitignore
-.github
 
-# IDEs
+# IDEs & OS
 .idea
 .vscode
 .DS_Store
+*.swp
 
-# Legacy/Archive
-comfy_v1_old
-repomix-output.txt
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+venv/
+.venv/
+
+# Documentation (not needed in runtime image)
+*.md
+docs/
+
+# Development files
 *.log
 *.tmp
 *.bak
 
-# Documentation (not needed in image)
-docs/
-*.md
-LICENSE
+# Scripts (only needed for migration)
+scripts/
 
-# Local dev artifacts
-node_modules
-venv/
-__pycache__/
-*.pyc
+# Local env files
+.env
+.env.local
+
+# Research notes
+QWEN_RESEARCH.md

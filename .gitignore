@@ -3,13 +3,16 @@
 .env.local
 .env.*.local
 
-# Build artifacts
-build/
-dist/
-*.tar.gz
-
-# Docker
-.docker/
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+venv/
+.venv/
+.pytest_cache/
 
 # IDE files
 .vscode/
@@ -28,30 +31,11 @@ logs/
 # Temporary files
 tmp/
 temp/
-.tmp/
-
-# Node modules (if you add any JS tools)
-node_modules/
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-
-# Backup files
+*.tmp
 *.bak
-*.backup
 *~
 
-# Test artifacts
-test-results/
-coverage/
-
-# Local development
-dev/
-sandbox/
-# modal-labs-docs-*.md
-modal-labs-docs-2025-12-27.md
+# Build artifacts (if doing local Docker builds)
+build/
+dist/
+*.tar.gz
