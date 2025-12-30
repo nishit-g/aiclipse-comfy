@@ -116,17 +116,44 @@ cd aiclipse-comfy
 # 1. Download models to volume (first time only)
 modal run v3/templates/qwen-multi-edit/modal/app.py::download_models
 
-# 2. Development mode (hot reload)
-modal serve v3/templates/qwen-multi-edit/modal/app.py
+# 2. Development mode (interactive UI with hot reload)
+modal serve v3/templates/qwen-multi-edit/modal/app.py::ui
 
-# 3. Production deployment
+# 3. Production deployment (API mode)
 modal deploy v3/templates/qwen-multi-edit/modal/app.py
 ```
 
-### Access ComfyUI
+### Access Endpoints
 
-- **Dev**: `https://YOUR_WORKSPACE--comfy-qwen-multi-edit-serve-dev.modal.run`
-- **Prod**: `https://YOUR_WORKSPACE--comfy-qwen-multi-edit-serve.modal.run`
+| Mode | Endpoint | Purpose |
+|------|----------|---------|
+| Dev UI | `https://WORKSPACE--comfy-qwen-multi-edit-dev.modal.run` | Interactive ComfyUI |
+| Health | `GET /qwen-multi-edit-health` | Health check (no GPU) |
+| API | `POST /qwen-multi-edit-api` | Run workflows programmatically |
+
+### API Usage
+
+```bash
+# Run workflow via API
+curl -X POST https://WORKSPACE--comfy-qwen-multi-edit-api.modal.run \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "A beautiful sunset over mountains"}'
+```
+
+```python
+# Python client example
+import requests
+
+response = requests.post(
+    "https://WORKSPACE--comfy-qwen-multi-edit-api.modal.run",
+    json={
+        "workflow": {...},  # Optional: custom workflow
+        "prompt": "...",     # Optional: text prompt
+        "params": {...}      # Optional: node parameters
+    }
+)
+image_bytes = response.content
+```
 
 ---
 

@@ -202,17 +202,17 @@ def download_models():
 
 
 # =============================================================================
-# Health Check
+# Health Check Endpoint
 # =============================================================================
 @app.function(image=template_image)
 @modal.fastapi_endpoint(method="GET", label=f"{TEMPLATE_NAME}-health")
 def health():
-    """Health check endpoint."""
+    """Health check endpoint (no GPU required)."""
     return {"status": "healthy", "template": TEMPLATE_NAME, "gpu": GPU.modal_gpu}
 
 
 # =============================================================================
-# Main Serve Function
+# UI Function (Development Mode)
 # =============================================================================
 @app.function(
     image=template_image,
@@ -228,15 +228,20 @@ def health():
 )
 @modal.concurrent(max_inputs=10)
 @modal.web_server(port=8188, startup_timeout=120)
-def serve():
-    """Serve ComfyUI with the Qwen Multi-Edit template."""
+def ui():
+    """
+    Interactive ComfyUI for development.
+    
+    Run: modal serve v3/templates/qwen-multi-edit/modal/app.py
+    """
+    import subprocess
     import sys
     sys.path.insert(0, "/app/shared")
     
-    from aiclipse import Config, setup_model_paths, ComfyLauncher, install_custom_nodes
+    from aiclipse import Config, setup_model_paths, install_custom_nodes
     
     print("=" * 60)
-    print(f"🚀 Starting AiClipse ComfyUI")
+    print(f"🎨 Starting AiClipse ComfyUI (UI Mode)")
     print(f"   Template: {TEMPLATE_NAME}")
     print(f"   GPU: {GPU.modal_gpu} ({GPU.vram_gb}GB VRAM)")
     print("=" * 60)
@@ -244,54 +249,267 @@ def serve():
     # Load config with env overrides
     config = Config.load("/app/config.yaml")
     
-    # Print config summary
-    print(f"\n📋 Configuration:")
-    print(f"   ComfyUI args: {' '.join(config.comfy_args)}")
-    print(f"   Models: {len(config.get_all_models())}")
-    print(f"   Nodes: {len(config.template.nodes)}")
-    
-    # Install custom nodes (parallel, with retry)
+    # Install custom nodes if configured
     if config.template.nodes:
         node_specs = [{"repo": n.repo, "branch": n.branch or "main"} for n in config.template.nodes]
         install_custom_nodes(node_specs, Path(COMFY_UI_PATH))
     
-    # Setup model paths (extra_model_paths.yaml)
-    # CRITICAL: Must be in ComfyUI directory where main.py is, NOT workspace root!
+    # Setup model paths
     setup_model_paths(
-        comfy_dir=COMFY_UI_PATH,  # /root/comfy/ComfyUI not /root/comfy
+        comfy_dir=COMFY_UI_PATH,
         models_dir=MODELS_PATH,
         name="modal_volume",
     )
     
     # Symlink outputs to volume
-    comfy_output = Path(COMFY_UI_PATH) / "output"
-    if comfy_output.exists() and not comfy_output.is_symlink():
-        import shutil
-        shutil.rmtree(comfy_output)
-    if not comfy_output.exists():
-        # Ensure parent exists
-        comfy_output.parent.mkdir(parents=True, exist_ok=True)
-        comfy_output.symlink_to(OUTPUTS_PATH)
-        print(f"🔗 Outputs → {OUTPUTS_PATH}")
+    _setup_output_symlink()
     
     # Build launch command
     comfy_args = " ".join(config.comfy_args) if config.comfy_args else ""
     cmd = f"comfy launch -- --listen 0.0.0.0 --port 8188 {comfy_args}"
     
     print(f"\n🖥️  Running: {cmd}")
-    print(f"   Directory: {COMFY_PATH}\n")
-    
-    # Launch ComfyUI with subprocess.Popen (NOT os.execvp)
-    # Modal's @web_server needs the process to stay alive, not be replaced
-    import subprocess
     subprocess.Popen(cmd, shell=True, cwd=COMFY_PATH)
+    print("✅ ComfyUI started!")
+
+
+# =============================================================================
+# ComfyServer Class (Production API with Memory Snapshot)
+# =============================================================================
+@app.cls(
+    image=template_image,
+    gpu=GPU.modal_gpu,
+    volumes={
+        MODELS_PATH: models_volume,
+        OUTPUTS_PATH: outputs_volume,
+    },
+    secrets=app_secrets,
+    timeout=3600,
+    memory=32768,  # 32GB
+    scaledown_window=300,  # Keep warm 5 min
+    max_containers=5,  # Allow scaling for API
+    enable_memory_snapshot=True,  # 🔥 Fast cold starts
+)
+@modal.concurrent(max_inputs=10)
+class ComfyServer:
+    """
+    Production ComfyUI API server with memory snapshot for fast cold starts.
     
-    print("✅ ComfyUI started successfully!")
+    Cold start: ~15-25s (vs ~60-90s without snapshot)
+    
+    Deploy: modal deploy v3/templates/qwen-multi-edit/modal/app.py
+    Serve:  modal serve v3/templates/qwen-multi-edit/modal/app.py
+    """
+    port: int = 8188
+    
+    @modal.enter(snap=True)
+    def setup_environment(self):
+        """
+        Snapshot phase: Setup config and paths (NO GPU access).
+        
+        This runs ONCE and is snapshotted. Future cold starts restore from here.
+        """
+        import sys
+        sys.path.insert(0, "/app/shared")
+        
+        from aiclipse import Config, setup_model_paths, install_custom_nodes
+        
+        print("=" * 60)
+        print(f"� AiClipse ComfyUI - Snapshot Phase")
+        print(f"   Template: {TEMPLATE_NAME}")
+        print(f"   GPU: {GPU.modal_gpu} ({GPU.vram_gb}GB VRAM)")
+        print("=" * 60)
+        
+        # Load config (snapshotted)
+        self.config = Config.load("/app/config.yaml")
+        print(f"📋 Config loaded: {len(self.config.comfy_args)} args")
+        
+        # Install custom nodes if configured (snapshotted)
+        if self.config.template.nodes:
+            node_specs = [{"repo": n.repo, "branch": n.branch or "main"} for n in self.config.template.nodes]
+            install_custom_nodes(node_specs, Path(COMFY_UI_PATH))
+            print(f"📦 Custom nodes: {len(self.config.template.nodes)} installed")
+        
+        # Setup model paths (snapshotted)
+        setup_model_paths(
+            comfy_dir=COMFY_UI_PATH,
+            models_dir=MODELS_PATH,
+            name="modal_volume",
+        )
+        print(f"📁 Model paths configured")
+        
+        # Symlink outputs (snapshotted)
+        _setup_output_symlink()
+        
+        print("✅ Snapshot phase complete - environment ready")
+    
+    @modal.enter(snap=False)
+    def launch_server(self):
+        """
+        Restore phase: Launch server (GPU now available).
+        
+        This runs AFTER restoring from snapshot. GPU is available.
+        """
+        import subprocess
+        
+        print("=" * 60)
+        print(f"🚀 AiClipse ComfyUI - Launching Server")
+        print("=" * 60)
+        
+        # Launch server in background with GPU args
+        comfy_args = " ".join(self.config.comfy_args) if self.config.comfy_args else ""
+        cmd = f"comfy launch --background -- --port {self.port} {comfy_args}"
+        
+        print(f"🖥️  Running: {cmd}")
+        subprocess.run(cmd, shell=True, check=True, cwd=COMFY_PATH)
+        print("✅ ComfyUI server started!")
+    
+    @modal.method()
+    def infer(self, workflow_path: str = "/root/workflow_api.json") -> bytes:
+        """
+        Run a workflow and return output image bytes.
+        
+        Args:
+            workflow_path: Path to workflow JSON file
+            
+        Returns:
+            Image bytes
+        """
+        import json
+        import subprocess
+        
+        # Health check before running
+        self._poll_server_health()
+        
+        # Run workflow
+        cmd = f"comfy run --workflow {workflow_path} --wait --timeout 1200 --verbose"
+        subprocess.run(cmd, shell=True, check=True, cwd=COMFY_PATH)
+        
+        # Find output file
+        output_dir = Path(COMFY_UI_PATH) / "output"
+        workflow = json.loads(Path(workflow_path).read_text())
+        
+        # Get filename prefix from SaveImage node
+        file_prefix = None
+        for node in workflow.values():
+            if node.get("class_type") == "SaveImage":
+                file_prefix = node.get("inputs", {}).get("filename_prefix")
+                break
+        
+        if not file_prefix:
+            file_prefix = "ComfyUI"
+        
+        # Return first matching file
+        for f in sorted(output_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+            if f.name.startswith(file_prefix):
+                return f.read_bytes()
+        
+        raise FileNotFoundError(f"No output file found with prefix: {file_prefix}")
+    
+    @modal.fastapi_endpoint(method="POST", label=f"{TEMPLATE_NAME}-api")
+    def api(self, item: dict):
+        """
+        Run a workflow via API.
+        
+        POST body:
+        {
+            "workflow": {...},  # Optional: workflow JSON
+            "prompt": "...",     # Optional: text prompt to inject
+            "params": {...}      # Optional: additional parameters
+        }
+        
+        Returns: Image bytes
+        """
+        import json
+        import uuid
+        from fastapi import Response
+        
+        # Load workflow (from request or default)
+        if "workflow" in item:
+            workflow_data = item["workflow"]
+        else:
+            # Load default workflow from template
+            default_workflow = Path(COMFY_UI_PATH) / "user/default/workflows"
+            workflow_files = list(default_workflow.glob("*.json"))
+            if workflow_files:
+                workflow_data = json.loads(workflow_files[0].read_text())
+            else:
+                return {"error": "No workflow provided and no default found"}
+        
+        # Inject prompt if provided
+        if "prompt" in item:
+            for node in workflow_data.values():
+                if node.get("class_type") in ["CLIPTextEncode", "Text"]:
+                    if "text" in node.get("inputs", {}):
+                        node["inputs"]["text"] = item["prompt"]
+                        break
+        
+        # Apply params if provided
+        if "params" in item:
+            for node_id, params in item["params"].items():
+                if node_id in workflow_data:
+                    workflow_data[node_id]["inputs"].update(params)
+        
+        # Generate unique ID for this request
+        client_id = uuid.uuid4().hex[:8]
+        
+        # Set unique filename prefix
+        for node in workflow_data.values():
+            if node.get("class_type") == "SaveImage":
+                node["inputs"]["filename_prefix"] = client_id
+        
+        # Save workflow to temp file
+        workflow_file = f"/tmp/{client_id}.json"
+        with open(workflow_file, "w") as f:
+            json.dump(workflow_data, f)
+        
+        # Run inference
+        try:
+            img_bytes = self.infer.local(workflow_file)
+            return Response(img_bytes, media_type="image/png")
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def _poll_server_health(self):
+        """Check if ComfyUI server is healthy, stop container if not."""
+        import socket
+        import urllib.request
+        
+        try:
+            req = urllib.request.Request(f"http://127.0.0.1:{self.port}/system_stats")
+            urllib.request.urlopen(req, timeout=5)
+            print("✅ ComfyUI server is healthy")
+        except (socket.timeout, urllib.error.URLError) as e:
+            print(f"❌ Server health check failed: {e}")
+            modal.experimental.stop_fetching_inputs()
+            raise Exception("ComfyUI server is not healthy, stopping container")
+
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+def _setup_output_symlink():
+    """Symlink ComfyUI output to volume."""
+    import shutil
+    
+    comfy_output = Path(COMFY_UI_PATH) / "output"
+    if comfy_output.exists() and not comfy_output.is_symlink():
+        shutil.rmtree(comfy_output)
+    if not comfy_output.exists():
+        comfy_output.parent.mkdir(parents=True, exist_ok=True)
+        comfy_output.symlink_to(OUTPUTS_PATH)
+        print(f"🔗 Outputs → {OUTPUTS_PATH}")
 
 
 # =============================================================================
 # Entry Point
 # =============================================================================
 if __name__ == "__main__":
-    print("Use: modal serve v3/templates/qwen-multi-edit/modal/app.py")
-    print("  or: modal deploy v3/templates/qwen-multi-edit/modal/app.py")
+    print("Usage:")
+    print("  Development: modal serve v3/templates/qwen-multi-edit/modal/app.py::ui")
+    print("  Production:  modal deploy v3/templates/qwen-multi-edit/modal/app.py")
+    print("")
+    print("Endpoints after deploy:")
+    print(f"  - GET  /{TEMPLATE_NAME}-health   Health check")
+    print(f"  - POST /{TEMPLATE_NAME}-api      Run workflow via API")
+
