@@ -64,12 +64,12 @@ models:
     path: loras
 
   # ---------------------------------------------------------------------------
-  # CUSTOM LORAS
+  # CUSTOM LORAS (from R2)
   # ---------------------------------------------------------------------------
-  # - source: r2
-    # key: loras/hk_v1_final.safetensors
-    # file: hk_v1_final.safetensors
-    # path: loras
+  - source: r2
+    key: loras_v2/v2_hk_000014000.safetensors
+    file: v2_hk_000014000.safetensors
+    path: loras
 
 # ==============================================================================
 # Custom Nodes

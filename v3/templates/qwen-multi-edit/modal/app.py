@@ -45,12 +45,16 @@ COMFY_UI_PATH = "/root/comfy/ComfyUI"  # actual ComfyUI installation (where main
 # Modal App
 # =============================================================================
 
-# Try to load huggingface secret (optional for serving, required for downloads)
+# Try to load secrets (optional for serving, required for downloads)
+app_secrets = []
 try:
-    hf_secret = modal.Secret.from_name("huggingface-secret")
-    app_secrets = [hf_secret]
+    app_secrets.append(modal.Secret.from_name("huggingface-secret"))
 except:
-    app_secrets = []
+    pass
+try:
+    app_secrets.append(modal.Secret.from_name("r2-secret"))
+except:
+    pass
 
 app = modal.App(name=f"comfy-{TEMPLATE_NAME}")
 
@@ -128,6 +132,7 @@ template_image = (
 @app.function(
     image=download_image,  # Has aria2c + aiclipse library
     volumes={MODELS_PATH: models_volume},
+    secrets=app_secrets,  # R2 + HuggingFace credentials
     timeout=3600,
     memory=4096,  # 4GB for download buffering
 )
