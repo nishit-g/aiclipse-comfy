@@ -34,47 +34,38 @@ if result["status"] == "completed":
     print(result["outputs"][0]["url"])  # /view?filename=...
 ```
 
-### TypeScript
+### TypeScript / JavaScript (Recommended)
 
-```typescript
-const BASE = "https://ybshiva--comfy-qwen-multi-edit-run.modal.run";
+We recommend using the **[@stable-canvas/comfyui-client](https://github.com/StableCanvas/comfyui-client)** library. It handles WebSocket connections, type safety, and queue management for you.
 
-interface RunResponse {
-  run_id: string;
-  status: "queued" | "processing" | "completed" | "failed";
-  outputs?: { node_id: string; filename: string; url: string }[];
-  error?: string;
-}
-
-// Sync mode - wait for result
-const response = await fetch(BASE, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ workflow, wait: true }),
-});
-
-const result: RunResponse = await response.json();
-
-if (result.status === "completed") {
-  console.log(result.outputs[0].url);
-}
+**Installation:**
+```bash
+npm install @stable-canvas/comfyui-client
 ```
 
-### JavaScript (Node.js)
+**Usage:**
 
-```javascript
-const BASE = "https://ybshiva--comfy-qwen-multi-edit-run.modal.run";
+```typescript
+import { Client } from "@stable-canvas/comfyui-client";
 
-// Sync mode
-const response = await fetch(BASE, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ workflow, wait: true, timeout: 300 }),
+// Connect to the API
+const client = new Client({
+  api_host: "ybshiva--comfy-qwen-multi-edit-serve.modal.run",
+  ssl: true, // Use SSL for Modal URLs
 });
 
-const result = await response.json();
-console.log(result.status); // "completed"
-console.log(result.outputs); // [{ node_id, filename, url }]
+await client.connect();
+
+// Run workflow & wait for result
+const result = await client.enqueue(workflow, {
+  progress: ({ max, value }) => {
+    console.log(`Progress: ${Math.round((value / max) * 100)}%`);
+  },
+});
+
+// Get output image
+const img = result.images[0];
+console.log("Output:", img.data); // URL or Buffer
 ```
 
 ### cURL
