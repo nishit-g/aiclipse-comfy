@@ -39,6 +39,39 @@ def print_progress_bar(value: int, max_val: int, width: int = 40):
     print(f"\r   [{bar}] {value}/{max_val} ({pct*100:.0f}%)", end="", flush=True)
 
 
+def _fetch_and_download_outputs(base_url: str, prompt_id: str, output_file: Path) -> bool:
+    """Fetch outputs from history and download images."""
+    print("   Fetching outputs from /history...")
+    try:
+        hist = requests.get(f"{base_url}/history/{prompt_id}", timeout=10)
+        if hist.status_code == 200:
+            hist_data = hist.json()
+            if prompt_id in hist_data:
+                outputs = hist_data[prompt_id].get("outputs", {})
+                if outputs:
+                    for node_id, node_output in outputs.items():
+                        if "images" in node_output:
+                            for img in node_output["images"]:
+                                filename = img.get("filename")
+                                subfolder = img.get("subfolder", "")
+                                img_type = img.get("type", "output")
+                                print(f"   📸 Found: {filename}")
+                                
+                                view_url = f"{base_url}/view?filename={filename}&subfolder={subfolder}&type={img_type}"
+                                img_resp = requests.get(view_url, timeout=30)
+                                if img_resp.status_code == 200:
+                                    output_file.write_bytes(img_resp.content)
+                                    print(f"   ✅ Saved: {output_file} ({len(img_resp.content):,} bytes)")
+                                    return True
+                                else:
+                                    print(f"   ❌ Failed to download: {img_resp.status_code}")
+                else:
+                    print("   No outputs in history")
+    except Exception as e:
+        print(f"   Could not fetch history: {e}")
+    return False
+
+
 def test_comfy_api(base_url: str, workflow_path: Path, timeout: int = 600) -> bool:
     """
     Test ComfyUI API by queueing a workflow and listening for results via WebSocket.
@@ -156,48 +189,21 @@ def test_comfy_api(base_url: str, workflow_path: Path, timeout: int = 600) -> bo
                     
                 elif msg_type == "executing":
                     node = msg_data.get("node")
+                    exec_prompt_id = msg_data.get("prompt_id")
                     if node and node != current_node:
                         current_node = node
                         node_class = workflow.get(node, {}).get("class_type", "?")
                         print(f"\n   🔄 Node [{node}] {node_class}")
                         executed_nodes.append(node)
-                    elif node is None:
-                        # Execution finished for this prompt
-                        pass
+                    elif node is None and exec_prompt_id == prompt_id:
+                        # Execution finished for this prompt (node: null means done)
+                        print(f"\n\n✅ Execution complete!")
+                        success = _fetch_and_download_outputs(base_url, prompt_id, output_file)
+                        break
                         
-                elif msg_type == "execution_complete":
+                elif msg_type in ["execution_complete", "execution_success"]:
                     print(f"\n\n✅ Execution complete!")
-                    # Fetch outputs from history
-                    print("   Fetching outputs from /history...")
-                    try:
-                        hist = requests.get(f"{base_url}/history/{prompt_id}", timeout=10)
-                        if hist.status_code == 200:
-                            hist_data = hist.json()
-                            if prompt_id in hist_data:
-                                outputs = hist_data[prompt_id].get("outputs", {})
-                                if outputs:
-                                    # Find SaveImage output
-                                    for node_id, node_output in outputs.items():
-                                        if "images" in node_output:
-                                            for img in node_output["images"]:
-                                                filename = img.get("filename")
-                                                subfolder = img.get("subfolder", "")
-                                                img_type = img.get("type", "output")
-                                                print(f"   📸 Found: {filename}")
-                                                
-                                                # Download image
-                                                view_url = f"{base_url}/view?filename={filename}&subfolder={subfolder}&type={img_type}"
-                                                img_resp = requests.get(view_url, timeout=30)
-                                                if img_resp.status_code == 200:
-                                                    output_file.write_bytes(img_resp.content)
-                                                    print(f"   ✅ Saved: {output_file} ({len(img_resp.content):,} bytes)")
-                                                    success = True
-                                                else:
-                                                    print(f"   ❌ Failed to download: {img_resp.status_code}")
-                                else:
-                                    print("   No outputs in history")
-                    except Exception as e:
-                        print(f"   Could not fetch history: {e}")
+                    success = _fetch_and_download_outputs(base_url, prompt_id, output_file)
                     break
                     
                 elif msg_type == "execution_error":
