@@ -30,14 +30,15 @@ CONFIG_PATH = TEMPLATE_DIR / "config.yaml"
 GPU_VARIANT = os.environ.get("GPU_VARIANT", "a10g")
 GPU = get_gpu_config(GPU_VARIANT)
 
-# Volume names
-MODELS_VOLUME_NAME = f"comfy-models-{TEMPLATE_NAME}"
-OUTPUTS_VOLUME_NAME = f"comfy-outputs-{TEMPLATE_NAME}"
+# Volume names (shared across templates so models are reused)
+MODELS_VOLUME_NAME = "aiclipse-models"
+OUTPUTS_VOLUME_NAME = "aiclipse-outputs"
 
 # Paths inside container
 MODELS_PATH = "/models"
 OUTPUTS_PATH = "/outputs"
-COMFY_PATH = "/root/comfy"
+COMFY_PATH = "/root/comfy"  # comfy-cli workspace
+COMFY_UI_PATH = "/root/comfy/ComfyUI"  # actual ComfyUI installation (where main.py is)
 
 # =============================================================================
 # Modal App
@@ -112,7 +113,7 @@ comfy_image = base_image.run_commands(
 template_image = (
     comfy_image
     .add_local_dir(str(V3_DIR / "shared"), "/app/shared", copy=True)
-    .add_local_dir(str(TEMPLATE_DIR / "workflows"), f"{COMFY_PATH}/user/default/workflows", copy=True)
+    .add_local_dir(str(TEMPLATE_DIR / "workflows"), f"{COMFY_UI_PATH}/user/default/workflows", copy=True)
     .add_local_file(str(CONFIG_PATH), "/app/config.yaml", copy=True)
     .env({
         "PYTHONPATH": "/app/shared",
@@ -188,6 +189,8 @@ def health():
     },
     timeout=3600,
     memory=32768,  # 32GB
+    max_containers=1,  # Single instance for dev
+    scaledown_window=300,  # Keep warm 5 min
 )
 @modal.concurrent(max_inputs=10)
 @modal.web_server(port=8188, startup_timeout=120)
@@ -216,28 +219,40 @@ def serve():
     # Install custom nodes (parallel, with retry)
     if config.template.nodes:
         node_specs = [{"repo": n.repo, "branch": n.branch or "main"} for n in config.template.nodes]
-        install_custom_nodes(node_specs, Path(COMFY_PATH))
+        install_custom_nodes(node_specs, Path(COMFY_UI_PATH))
     
     # Setup model paths (extra_model_paths.yaml)
+    # CRITICAL: Must be in ComfyUI directory where main.py is, NOT workspace root!
     setup_model_paths(
-        comfy_dir=COMFY_PATH,
+        comfy_dir=COMFY_UI_PATH,  # /root/comfy/ComfyUI not /root/comfy
         models_dir=MODELS_PATH,
         name="modal_volume",
     )
     
     # Symlink outputs to volume
-    import os
-    comfy_output = Path(COMFY_PATH) / "output"
+    comfy_output = Path(COMFY_UI_PATH) / "output"
     if comfy_output.exists() and not comfy_output.is_symlink():
         import shutil
         shutil.rmtree(comfy_output)
     if not comfy_output.exists():
+        # Ensure parent exists
+        comfy_output.parent.mkdir(parents=True, exist_ok=True)
         comfy_output.symlink_to(OUTPUTS_PATH)
         print(f"🔗 Outputs → {OUTPUTS_PATH}")
     
-    # Launch ComfyUI
-    launcher = ComfyLauncher(config, comfy_dir=COMFY_PATH)
-    launcher.run(blocking=True)
+    # Build launch command
+    comfy_args = " ".join(config.comfy_args) if config.comfy_args else ""
+    cmd = f"comfy launch -- --listen 0.0.0.0 --port 8188 {comfy_args}"
+    
+    print(f"\n🖥️  Running: {cmd}")
+    print(f"   Directory: {COMFY_PATH}\n")
+    
+    # Launch ComfyUI with subprocess.Popen (NOT os.execvp)
+    # Modal's @web_server needs the process to stay alive, not be replaced
+    import subprocess
+    subprocess.Popen(cmd, shell=True, cwd=COMFY_PATH)
+    
+    print("✅ ComfyUI started successfully!")
 
 
 # =============================================================================
