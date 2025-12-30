@@ -1,372 +1,455 @@
-# Qwen Multi-Edit API Documentation
+# ComfyUI API Documentation
 
-> **Production API for Qwen-Image-Edit-2511 with Lightning acceleration**
+> **Run ANY ComfyUI workflow via API. Fast.**
 
-## Quick Reference
+## API Endpoints Summary
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/prompt` | POST | Queue a workflow for execution |
-| `/ws` | WebSocket | Real-time execution progress & results |
-| `/history/{prompt_id}` | GET | Retrieve execution results |
-| `/view` | GET | Download generated images |
-| `/upload/image` | POST | Upload input images |
-| `/system_stats` | GET | Health check & system info |
+| `/run` | POST | **Simple API** - Queue workflow, optionally wait for result |
+| `/status` | GET | Check run status |
+| `/prompt` | POST | Raw ComfyUI - Queue workflow |
+| `/ws` | WebSocket | Real-time progress |
+| `/history/{id}` | GET | Raw ComfyUI - Get results |
+| `/view` | GET | Download images |
 
 ---
 
-## Base URL
+## TL;DR - 30 Second Quickstart
 
-```
-Production: https://ybshiva--comfy-qwen-multi-edit-serve.modal.run
-```
-
----
-
-## Authentication
-
-Currently **no authentication required**. For production, consider enabling [Modal Proxy Auth Tokens](https://modal.com/docs/guide/proxy-auth-tokens).
-
----
-
-## API Endpoints
-
-### 1. Queue Workflow (`POST /prompt`)
-
-Queue a ComfyUI workflow for execution.
-
-**Request:**
-
-```bash
-curl -X POST "https://ybshiva--comfy-qwen-multi-edit-serve.modal.run/prompt" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": { /* workflow JSON */ },
-    "client_id": "my-client-id"
-  }'
-```
-
-**Request Body:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `prompt` | object | ✅ | ComfyUI workflow in API format |
-| `client_id` | string | ❌ | Optional client identifier for WebSocket |
-
-**Response (Success - 200):**
-
-```json
-{
-  "prompt_id": "abc123-def456-...",
-  "number": 1,
-  "node_errors": {}
-}
-```
-
-**Response (Validation Error):**
-
-```json
-{
-  "error": "Validation error message",
-  "node_errors": {
-    "12": {
-      "class_type": "LoadImage",
-      "input_name": "image",
-      "error": "File not found: missing.png"
-    }
-  }
-}
-```
-
----
-
-### 2. WebSocket Connection (`/ws`)
-
-Connect to receive real-time execution updates.
-
-**Connection:**
-
-```javascript
-const ws = new WebSocket("wss://ybshiva--comfy-qwen-multi-edit-serve.modal.run/ws");
-
-ws.onmessage = (event) => {
-  if (typeof event.data === "string") {
-    const data = JSON.parse(event.data);
-    console.log(data.type, data.data);
-  } else {
-    // Binary data (image from SaveImageWebsocket)
-    const imageBlob = event.data.slice(8); // Skip 8-byte header
-  }
-};
-```
-
-**Message Types:**
-
-| Type | Description | Data |
-|------|-------------|------|
-| `status` | Queue status | `{ "exec_info": { "queue_remaining": n } }` |
-| `executing` | Node started | `{ "node": "65", "prompt_id": "..." }` |
-| `progress` | Step progress | `{ "value": 3, "max": 4, "prompt_id": "..." }` |
-| `execution_complete` | Finished | `{ "prompt_id": "..." }` |
-| `execution_error` | Error | `{ "prompt_id": "...", "exception_message": "..." }` |
-| (binary) | Image data | Raw PNG with 8-byte header |
-
----
-
-### 3. Get Execution History (`GET /history/{prompt_id}`)
-
-Retrieve results after execution completes.
-
-**Request:**
-
-```bash
-curl "https://ybshiva--comfy-qwen-multi-edit-serve.modal.run/history/abc123-def456"
-```
-
-**Response:**
-
-```json
-{
-  "abc123-def456": {
-    "prompt": [ /* original workflow */ ],
-    "outputs": {
-      "9": {
-        "images": [
-          {
-            "filename": "api_test_00001_.png",
-            "subfolder": "",
-            "type": "output"
-          }
-        ]
-      }
-    },
-    "status": {
-      "status_str": "success",
-      "completed": true,
-      "messages": [...]
-    }
-  }
-}
-```
-
----
-
-### 4. Download Image (`GET /view`)
-
-Download generated or input images.
-
-**Request:**
-
-```bash
-curl "https://ybshiva--comfy-qwen-multi-edit-serve.modal.run/view?filename=api_test_00001_.png&subfolder=&type=output" \
-  --output result.png
-```
-
-**Query Parameters:**
-
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `filename` | ✅ | Image filename |
-| `subfolder` | ❌ | Subfolder path (default: "") |
-| `type` | ✅ | `input`, `output`, or `temp` |
-
----
-
-### 5. Upload Image (`POST /upload/image`)
-
-Upload input images for workflows.
-
-**Request:**
-
-```bash
-curl -X POST "https://ybshiva--comfy-qwen-multi-edit-serve.modal.run/upload/image" \
-  -F "image=@/path/to/image.png" \
-  -F "overwrite=true"
-```
-
-**Response:**
-
-```json
-{
-  "name": "image.png",
-  "subfolder": "",
-  "type": "input"
-}
-```
-
-> **Note:** For persistent input images across containers, use Modal Volume:
-> ```bash
-> modal volume put aiclipse-inputs-v2 myimage.png
-> ```
-
----
-
-### 6. Health Check (`GET /system_stats`)
-
-Check server status and GPU info.
-
-**Request:**
-
-```bash
-curl "https://ybshiva--comfy-qwen-multi-edit-serve.modal.run/system_stats"
-```
-
-**Response:**
-
-```json
-{
-  "devices": [
-    {
-      "name": "cuda:0 NVIDIA A10G",
-      "vram_total": 24576,
-      "vram_free": 18432
-    }
-  ]
-}
-```
-
----
-
-## Complete Usage Examples
-
-### Python Example (Full Flow)
+### Python
 
 ```python
-#!/usr/bin/env python3
-"""Complete example: Queue workflow, monitor via WebSocket, download result."""
-
-import json
-import time
 import requests
-import websocket
 
-BASE_URL = "https://ybshiva--comfy-qwen-multi-edit-serve.modal.run"
+BASE = "https://ybshiva--comfy-qwen-multi-edit-run.modal.run"
+workflow = {"65": {...}, "41": {...}}  # Your workflow JSON
 
-# 1. Load workflow (use API format from ComfyUI)
-workflow = json.load(open("workflow.json"))
+# One-liner: wait=true returns result directly
+r = requests.post(BASE, json={"workflow": workflow, "wait": True})
+result = r.json()
 
-# 2. Optionally modify workflow parameters
-workflow["65"]["inputs"]["seed"] = int(time.time())  # Random seed
-
-# 3. Connect WebSocket for real-time updates
-ws = websocket.create_connection(f"{BASE_URL.replace('https', 'wss')}/ws")
-
-# 4. Queue the workflow
-response = requests.post(
-    f"{BASE_URL}/prompt",
-    json={"prompt": workflow, "client_id": "python-client"}
-)
-result = response.json()
-prompt_id = result["prompt_id"]
-print(f"Queued: {prompt_id}")
-
-# 5. Wait for completion via WebSocket
-while True:
-    msg = ws.recv()
-    if isinstance(msg, bytes):
-        # Image received via SaveImageWebsocket node
-        with open("output.png", "wb") as f:
-            f.write(msg[8:])  # Skip 8-byte header
-        print("Saved: output.png")
-        break
-    else:
-        data = json.loads(msg)
-        if data["type"] == "progress":
-            print(f"Progress: {data['data']['value']}/{data['data']['max']}")
-        elif data["type"] == "execution_complete":
-            break
-
-ws.close()
-
-# 6. Get results from history
-history = requests.get(f"{BASE_URL}/history/{prompt_id}").json()
-outputs = history[prompt_id]["outputs"]
-
-# 7. Download images
-for node_id, node_output in outputs.items():
-    if "images" in node_output:
-        for img in node_output["images"]:
-            img_url = f"{BASE_URL}/view?filename={img['filename']}&type={img['type']}"
-            img_data = requests.get(img_url).content
-            with open(img["filename"], "wb") as f:
-                f.write(img_data)
-            print(f"Downloaded: {img['filename']}")
+# Get image URL
+if result["status"] == "completed":
+    print(result["outputs"][0]["url"])  # /view?filename=...
 ```
 
-### JavaScript/Node.js Example
+### TypeScript
 
-```javascript
-const WebSocket = require('ws');
-const fs = require('fs');
+```typescript
+const BASE = "https://ybshiva--comfy-qwen-multi-edit-run.modal.run";
 
-const BASE_URL = 'https://ybshiva--comfy-qwen-multi-edit-serve.modal.run';
-
-async function runWorkflow(workflow) {
-  // Connect WebSocket
-  const ws = new WebSocket(`${BASE_URL.replace('https', 'wss')}/ws`);
-  
-  return new Promise((resolve, reject) => {
-    ws.on('open', async () => {
-      // Queue workflow
-      const response = await fetch(`${BASE_URL}/prompt`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: workflow })
-      });
-      
-      const { prompt_id } = await response.json();
-      console.log('Queued:', prompt_id);
-    });
-    
-    ws.on('message', (data) => {
-      if (Buffer.isBuffer(data)) {
-        // Binary image data
-        fs.writeFileSync('output.png', data.slice(8));
-        ws.close();
-        resolve('output.png');
-      } else {
-        const msg = JSON.parse(data.toString());
-        if (msg.type === 'progress') {
-          console.log(`Progress: ${msg.data.value}/${msg.data.max}`);
-        }
-      }
-    });
-    
-    ws.on('error', reject);
-  });
+interface RunResponse {
+  run_id: string;
+  status: "queued" | "processing" | "completed" | "failed";
+  outputs?: { node_id: string; filename: string; url: string }[];
+  error?: string;
 }
 
-// Usage
-const workflow = require('./workflow.json');
-runWorkflow(workflow).then(console.log);
+// Sync mode - wait for result
+const response = await fetch(BASE, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ workflow, wait: true }),
+});
+
+const result: RunResponse = await response.json();
+
+if (result.status === "completed") {
+  console.log(result.outputs[0].url);
+}
+```
+
+### JavaScript (Node.js)
+
+```javascript
+const BASE = "https://ybshiva--comfy-qwen-multi-edit-run.modal.run";
+
+// Sync mode
+const response = await fetch(BASE, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ workflow, wait: true, timeout: 300 }),
+});
+
+const result = await response.json();
+console.log(result.status); // "completed"
+console.log(result.outputs); // [{ node_id, filename, url }]
+```
+
+### cURL
+
+```bash
+# Sync mode (wait for result)
+curl -X POST "https://ybshiva--comfy-qwen-multi-edit-run.modal.run" \
+  -H "Content-Type: application/json" \
+  -d '{"workflow": {...}, "wait": true}'
+
+# Async mode (returns immediately)
+curl -X POST "https://ybshiva--comfy-qwen-multi-edit-run.modal.run" \
+  -H "Content-Type: application/json" \
+  -d '{"workflow": {...}}'
+# Returns: {"run_id": "abc-123", "status": "queued"}
+
+# Check status
+curl "https://ybshiva--comfy-qwen-multi-edit-status.modal.run?run_id=abc-123"
 ```
 
 ---
 
-## Workflow Format
+## Simple API Reference
 
-Workflows must be in **ComfyUI API format** (not the standard UI format).
+### POST /run
 
-**Exporting from ComfyUI UI:**
-1. Enable "Dev Mode" in ComfyUI settings
-2. Click "Save (API format)" button
-3. Use the exported JSON with this API
+Queue a workflow. Use `wait: true` to get result synchronously.
 
-**Example Workflow Structure:**
+**Request:**
+```json
+{
+  "workflow": { ... },      // Required: ComfyUI workflow JSON
+  "wait": true,             // Optional: Block until done (default: false)
+  "timeout": 300,           // Optional: Max wait seconds (default: 300)
+  "webhook_url": "https://..." // Optional: POST result here when done
+}
+```
+
+**Response:**
+```json
+{
+  "run_id": "abc-123-def",
+  "status": "completed",    // queued | processing | completed | failed
+  "outputs": [
+    {
+      "node_id": "9",
+      "filename": "result_00001_.png",
+      "url": "/view?filename=result_00001_.png&type=output",
+      "type": "output"
+    }
+  ],
+  "error": null
+}
+```
+
+### GET /status
+
+Check status of a run.
+
+```
+GET /status?run_id=abc-123-def
+```
+
+Same response format as `/run`.
+
+---
+
+
+## Step 1: Get Your Workflow in API Format
+
+**This is the most important step.** You need the workflow in "API format", not the default UI format.
+
+### How to Export API Format
+
+1. Open ComfyUI web UI
+2. Go to **Settings** → Enable **"Dev mode Options"**
+3. Load/create your workflow
+4. Click **"Save (API Format)"** button
+5. Save the JSON file
+
+### Difference
+
+| UI Format | API Format |
+|-----------|------------|
+| Contains visual layout, positions | Just nodes and connections |
+| 1000+ lines | 100-300 lines |
+| Not usable with API | ✅ Required for API |
+
+---
+
+## Step 2: Understand the Workflow JSON
+
+Your workflow JSON looks like this:
 
 ```json
 {
-  "8": {
+  "65": {
     "inputs": {
-      "samples": ["65", 0],
-      "vae": ["10", 0]
+      "seed": 12345,           // ← Parameters you can change
+      "steps": 4,
+      "model": ["12", 0]       // ← Connection: node 12, output 0
     },
-    "class_type": "VAEDecode",
-    "_meta": { "title": "VAE Decode" }
+    "class_type": "KSampler"
   },
+  "41": {
+    "inputs": {
+      "image": "input.png"     // ← Input image filename
+    },
+    "class_type": "LoadImage"
+  }
+}
+```
+
+**Key things to modify:**
+- `seed` - Random number for variation
+- `steps` - Quality (more = better but slower)
+- `image` - Input image filename (must exist on server)
+- Any `prompt` fields in text encoders
+
+---
+
+## Step 3: Upload Input Images
+
+**Option A: Pre-upload to Volume (Recommended)**
+```bash
+# Upload once, use forever
+modal volume put aiclipse-inputs-v2 myimage.png
+```
+Then use `"image": "myimage.png"` in your workflow.
+
+**Option B: Upload per-request**
+```python
+files = {"image": open("myimage.png", "rb")}
+r = requests.post(f"{BASE}/upload/image", files=files)
+filename = r.json()["name"]  # Use this in workflow
+```
+⚠️ Per-request uploads are ephemeral (lost on container restart).
+
+---
+
+## Step 4: Modify Workflow Parameters
+
+```python
+import json
+import random
+
+workflow = json.load(open("workflow.json"))
+
+# Change seed for different results
+workflow["65"]["inputs"]["seed"] = random.randint(1, 999999999)
+
+# Change input image
+workflow["41"]["inputs"]["image"] = "my_uploaded_image.png"
+
+# Change prompt (find the text encoder node)
+workflow["68"]["inputs"]["prompt"] = "Make it blue"
+```
+
+**Find the right node IDs by:**
+1. Looking at `"class_type"` values in the JSON
+2. Or checking `"_meta": {"title": "..."}` if present
+
+---
+
+## Step 5: Queue and Wait
+
+### Method A: Simple Polling (Easiest)
+
+```python
+import requests
+import time
+
+def run_workflow(workflow, base_url, timeout=300):
+    # Queue
+    r = requests.post(f"{base_url}/prompt", json={"prompt": workflow})
+    result = r.json()
+    
+    if "node_errors" in result and result["node_errors"]:
+        raise Exception(f"Workflow errors: {result['node_errors']}")
+    
+    prompt_id = result["prompt_id"]
+    
+    # Poll until done
+    start = time.time()
+    while time.time() - start < timeout:
+        hist = requests.get(f"{base_url}/history/{prompt_id}").json()
+        if prompt_id in hist:
+            status = hist[prompt_id].get("status", {})
+            if status.get("completed"):
+                return hist[prompt_id]["outputs"]
+        time.sleep(2)
+    
+    raise TimeoutError("Workflow didn't complete in time")
+```
+
+### Method B: WebSocket (Real-time Progress)
+
+```python
+import websocket
+import uuid
+
+client_id = str(uuid.uuid4())
+ws_url = f"wss://...modal.run/ws?clientId={client_id}"
+
+ws = websocket.create_connection(ws_url)
+
+# Queue with matching client_id
+requests.post(f"{BASE}/prompt", json={
+    "prompt": workflow,
+    "client_id": client_id  # MUST match WebSocket clientId
+})
+
+# Listen for events
+while True:
+    msg = json.loads(ws.recv())
+    if msg["type"] == "progress":
+        print(f"Step {msg['data']['value']}/{msg['data']['max']}")
+    elif msg["type"] == "executing" and msg["data"]["node"] is None:
+        print("Done!")
+        break
+```
+
+---
+
+## Step 6: Download Results
+
+```python
+# After workflow completes, outputs look like:
+outputs = {
+    "9": {  # Node ID of SaveImage
+        "images": [
+            {"filename": "result_00001_.png", "subfolder": "", "type": "output"}
+        ]
+    }
+}
+
+# Download each image
+for node_id, node_output in outputs.items():
+    for img in node_output.get("images", []):
+        url = f"{BASE}/view?filename={img['filename']}&type={img['type']}"
+        r = requests.get(url)
+        with open(img['filename'], 'wb') as f:
+            f.write(r.content)
+```
+
+---
+
+## API Reference
+
+### POST /prompt
+
+Queue a workflow.
+
+```
+POST /prompt
+Content-Type: application/json
+
+{
+  "prompt": { ... workflow JSON ... },
+  "client_id": "optional-for-websocket"
+}
+```
+
+**Response:**
+```json
+{"prompt_id": "abc-123", "number": 1, "node_errors": {}}
+```
+
+---
+
+### GET /history/{prompt_id}
+
+Get execution result.
+
+```
+GET /history/abc-123
+```
+
+**Response:**
+```json
+{
+  "abc-123": {
+    "status": {"status_str": "success", "completed": true},
+    "outputs": {
+      "9": {"images": [{"filename": "...", "type": "output"}]}
+    }
+  }
+}
+```
+
+---
+
+### GET /view
+
+Download an image.
+
+```
+GET /view?filename=result.png&type=output&subfolder=
+```
+
+**Response:** Image bytes (PNG/JPEG)
+
+---
+
+### POST /upload/image
+
+Upload an input image.
+
+```
+POST /upload/image
+Content-Type: multipart/form-data
+
+image: <file>
+overwrite: true
+```
+
+**Response:**
+```json
+{"name": "image.png", "subfolder": "", "type": "input"}
+```
+
+---
+
+### GET /system_stats
+
+Health check.
+
+```
+GET /system_stats
+```
+
+**Response:**
+```json
+{
+  "system": {"comfyui_version": "0.6.0"},
+  "devices": [{"name": "cuda:0 NVIDIA A10G"}]
+}
+```
+
+---
+
+### WebSocket /ws
+
+Real-time updates. **Connect with clientId query param.**
+
+```
+wss://...modal.run/ws?clientId=your-uuid
+```
+
+**Message types:**
+| Type | Meaning |
+|------|---------|
+| `progress` | Step progress: `{value: 3, max: 4}` |
+| `executing` | Node running: `{node: "65"}` |
+| `executing` + `node: null` | **Done** |
+| `execution_error` | Error occurred |
+| **(binary)** | Image from SaveImageWebsocket |
+
+---
+
+## Output Nodes: SaveImage vs SaveImageWebsocket
+
+Your workflow can use different nodes to output images:
+
+### SaveImage (Default)
+
+- Saves to disk on server
+- You fetch via `/history` → `/view`
+- **Use when:** You need persistent outputs, multiple images
+
+```json
+{
   "9": {
     "inputs": {
-      "filename_prefix": "api_test",
+      "filename_prefix": "result",
       "images": ["8", 0]
     },
     "class_type": "SaveImage"
@@ -374,101 +457,277 @@ Workflows must be in **ComfyUI API format** (not the standard UI format).
 }
 ```
 
-**Key Points:**
-- Node IDs are string keys (e.g., `"8"`, `"9"`)
-- Connections use `[node_id, output_index]` format
-- `class_type` specifies the node type
-- `inputs` contains all node parameters
-
----
-
-## Available Models
-
-The deployed template includes:
-
-| Model | Type | Size |
-|-------|------|------|
-| `qwen_image_edit_2511_bf16.safetensors` | Diffusion Model | ~38 GB |
-| `qwen_2.5_vl_7b_fp8_scaled.safetensors` | Text Encoder | ~8.7 GB |
-| `qwen_image_vae.safetensors` | VAE | ~242 MB |
-| `Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors` | LoRA (4-step) | ~1 GB |
-| `Qwen-Image-Lightning-8steps-V2.0-bf16.safetensors` | LoRA (8-step) | ~1 GB |
-| `v2_hk_000014000.safetensors` | Custom LoRA | ~1 GB |
-
----
-
-## Input Images
-
-**Option 1: Upload via API (ephemeral)**
-```bash
-curl -X POST "$BASE_URL/upload/image" -F "image=@input.png"
+**To get results:**
+```python
+# 1. Wait for completion
+# 2. GET /history/{prompt_id}
+# 3. GET /view?filename=...
 ```
-> ⚠️ Images uploaded via API are **per-container** and may not persist across restarts.
 
-**Option 2: Modal Volume (persistent, recommended)**
-```bash
-modal volume put aiclipse-inputs-v2 input.png
+### SaveImageWebsocket (Faster)
+
+- Sends image directly via WebSocket as binary
+- No disk I/O, faster
+- **Use when:** You want real-time results, single image output
+
+```json
+{
+  "9": {
+    "inputs": {
+      "images": ["8", 0]
+    },
+    "class_type": "SaveImageWebsocket"
+  }
+}
 ```
-Then reference as `input.png` in LoadImage nodes.
 
----
-
-## Test Script
-
-A ready-to-use test script is available:
-
-```bash
-# Run with default workflow
-python v3/templates/qwen-multi-edit/test_api.py
-
-# Custom workflow
-python v3/templates/qwen-multi-edit/test_api.py --workflow path/to/workflow.json
-
-# Different server
-python v3/templates/qwen-multi-edit/test_api.py --base-url https://your-server.modal.run
+**To get results:**
+```python
+# Binary data arrives via WebSocket automatically
 ```
 
 ---
 
-## Error Handling
+## Complete WebSocket Example with SaveImageWebsocket
 
-| HTTP Code | Meaning | Action |
-|-----------|---------|--------|
-| 200 | Success | Process response |
-| 400 | Validation error | Check `node_errors` for details |
-| 500 | Server error | Retry or check logs |
-| 503 | Container starting | Wait and retry (cold start) |
+This is the **fastest way** to get results - images stream directly to you.
 
-**Common Errors:**
+```python
+import websocket
+import requests
+import json
+import uuid
 
-1. **File not found** - Input image doesn't exist
-   ```json
-   {"node_errors": {"41": {"error": "Image not found: missing.png"}}}
-   ```
-   → Upload image or use Modal Volume
+BASE = "https://ybshiva--comfy-qwen-multi-edit-serve.modal.run"
 
-2. **Missing model** - Model file not downloaded
-   ```bash
-   modal run v3/templates/qwen-multi-edit/modal/app.py::download_models
-   ```
+def run_workflow_websocket(workflow, timeout=300):
+    """Run workflow and receive image via WebSocket (fastest method)."""
+    
+    # 1. Generate unique client ID
+    client_id = str(uuid.uuid4())
+    ws_url = BASE.replace("https://", "wss://") + f"/ws?clientId={client_id}"
+    
+    # 2. Connect WebSocket
+    ws = websocket.create_connection(ws_url, timeout=30)
+    
+    # 3. Queue workflow (client_id MUST match)
+    r = requests.post(f"{BASE}/prompt", json={
+        "prompt": workflow,
+        "client_id": client_id
+    })
+    result = r.json()
+    
+    if result.get("node_errors"):
+        ws.close()
+        raise Exception(f"Workflow errors: {result['node_errors']}")
+    
+    prompt_id = result["prompt_id"]
+    print(f"Queued: {prompt_id}")
+    
+    # 4. Listen for messages
+    images = []
+    
+    while True:
+        ws.settimeout(5.0)
+        try:
+            msg = ws.recv()
+        except websocket.WebSocketTimeoutException:
+            continue
+        
+        # Binary = image from SaveImageWebsocket
+        if isinstance(msg, bytes):
+            # Format: 4 bytes type + 4 bytes format + image data
+            image_data = msg[8:]  # Skip 8-byte header
+            images.append(image_data)
+            print(f"Received image: {len(image_data):,} bytes")
+        
+        # JSON = status message
+        else:
+            data = json.loads(msg)
+            msg_type = data.get("type")
+            
+            if msg_type == "progress":
+                p = data["data"]
+                print(f"Progress: {p['value']}/{p['max']}")
+            
+            elif msg_type == "executing":
+                node = data["data"].get("node")
+                exec_prompt = data["data"].get("prompt_id")
+                
+                # node=None means execution finished
+                if node is None and exec_prompt == prompt_id:
+                    print("Execution complete!")
+                    break
+            
+            elif msg_type == "execution_error":
+                ws.close()
+                raise Exception(f"Execution error: {data['data']}")
+    
+    ws.close()
+    return images
 
-3. **CUDA OOM** - GPU out of memory
-   → Reduce image size or wait for container restart
+# Usage
+workflow = json.load(open("workflow_with_saveimagewebsocket.json"))
+images = run_workflow_websocket(workflow)
+
+# Save the images
+for i, img_data in enumerate(images):
+    with open(f"output_{i}.png", "wb") as f:
+        f.write(img_data)
+    print(f"Saved output_{i}.png")
+```
+
+### Binary Format Details
+
+When using `SaveImageWebsocket`, binary messages have this format:
+
+```
+┌────────────┬────────────┬─────────────────────┐
+│ Type (4B)  │ Format (4B)│ Image Data (PNG)    │
+│ 0x00000001 │ 0x00000002 │ ...PNG bytes...     │
+└────────────┴────────────┴─────────────────────┘
+```
+
+Just skip the first 8 bytes: `image_data = msg[8:]`
+
+---
+
+## Getting ALL Outputs (Multiple SaveImage Nodes)
+
+If your workflow has multiple output nodes:
+
+```python
+def get_all_outputs(prompt_id, base_url):
+    """Get all images from all output nodes."""
+    
+    hist = requests.get(f"{base_url}/history/{prompt_id}").json()
+    
+    if prompt_id not in hist:
+        return []
+    
+    all_images = []
+    outputs = hist[prompt_id].get("outputs", {})
+    
+    for node_id, node_output in outputs.items():
+        # Images from SaveImage nodes
+        if "images" in node_output:
+            for img in node_output["images"]:
+                img_info = {
+                    "node_id": node_id,
+                    "filename": img["filename"],
+                    "type": img["type"],
+                    "subfolder": img.get("subfolder", ""),
+                }
+                
+                # Download the image
+                url = f"{base_url}/view?filename={img['filename']}&type={img['type']}&subfolder={img.get('subfolder', '')}"
+                r = requests.get(url)
+                img_info["data"] = r.content
+                img_info["size"] = len(r.content)
+                
+                all_images.append(img_info)
+    
+    return all_images
+
+# Usage
+images = get_all_outputs("abc-123", BASE)
+
+for img in images:
+    print(f"Node {img['node_id']}: {img['filename']} ({img['size']:,} bytes)")
+    with open(img['filename'], 'wb') as f:
+        f.write(img['data'])
+```
+
+### Output Structure Example
+
+```json
+{
+  "abc-123": {
+    "outputs": {
+      "9": {
+        "images": [
+          {"filename": "result_00001_.png", "type": "output", "subfolder": ""}
+        ]
+      },
+      "15": {
+        "images": [
+          {"filename": "preview_00001_.png", "type": "output", "subfolder": "previews"}
+        ]
+      }
+    }
+  }
+}
+```
+
+## Common Patterns
+
+### Run Same Workflow with Different Inputs
+
+```python
+def generate_variation(source_image: str, prompt: str, seed: int = None):
+    workflow = json.load(open("template.json"))
+    
+    # Modify
+    workflow["41"]["inputs"]["image"] = source_image
+    workflow["68"]["inputs"]["prompt"] = prompt
+    workflow["65"]["inputs"]["seed"] = seed or random.randint(1, 999999999)
+    
+    # Run
+    return run_workflow(workflow, BASE)
+```
+
+### Batch Process Multiple Images
+
+```python
+from concurrent.futures import ThreadPoolExecutor
+
+images = ["img1.png", "img2.png", "img3.png"]
+
+with ThreadPoolExecutor(max_workers=3) as executor:
+    results = list(executor.map(
+        lambda img: generate_variation(img, "enhance quality"),
+        images
+    ))
+```
+
+### Error Handling
+
+```python
+r = requests.post(f"{BASE}/prompt", json={"prompt": workflow})
+result = r.json()
+
+if r.status_code != 200:
+    print(f"HTTP Error: {r.status_code}")
+    
+if result.get("node_errors"):
+    for node_id, error in result["node_errors"].items():
+        print(f"Node {node_id} ({error.get('class_type')}): {error}")
+```
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `"Image not found"` | Input image doesn't exist | Upload via Volume or /upload/image |
+| WebSocket no messages | clientId mismatch | Use same clientId in URL and prompt |
+| Timeout | Cold start or slow workflow | Increase timeout, wait 60-90s |
+| `500 error` | Model not loaded | Run `modal run app.py::download_models` |
 
 ---
 
 ## Performance Tips
 
-1. **Use WebSocket** - Avoid polling `/history`, use `/ws` for real-time updates
-2. **Batch requests** - Queue multiple workflows without waiting
-3. **Persistent inputs** - Use Modal Volume for frequently-used input images
-4. **Randomize seeds** - Set unique seeds to prevent caching issues
+1. **Pre-upload inputs** to Modal Volume (not per-request)
+2. **Keep container warm** - First request takes 60-90s (cold start)
+3. **Use polling for simple cases** - WebSocket adds complexity
+4. **Batch when possible** - Queue multiple workflows in parallel
 
 ---
 
-## Related Resources
+## Files
 
-- [ComfyUI API Docs](https://docs.comfy.org/essentials/comfyui_as_api)
-- [Modal Deployment Docs](https://modal.com/docs/guide/web-endpoints)
-- [Project README](../../../README.md)
-- [Architecture Overview](../../../ARCHITECTURE.md)
+- **Production URL:** `https://ybshiva--comfy-qwen-multi-edit-serve.modal.run`
+- **Test script:** `v3/templates/qwen-multi-edit/test_api.py`
+- **Workflows:** `v3/templates/qwen-multi-edit/workflows/`
