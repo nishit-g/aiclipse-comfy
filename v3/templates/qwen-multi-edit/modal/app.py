@@ -27,7 +27,7 @@ TEMPLATE_NAME = "qwen-multi-edit"
 CONFIG_PATH = TEMPLATE_DIR / "config.yaml"
 
 # GPU Variants - create separate apps for different GPUs
-GPU_VARIANT = os.environ.get("GPU_VARIANT", "a10g")
+GPU_VARIANT = os.environ.get("GPU_VARIANT", "l40s")
 GPU = get_gpu_config(GPU_VARIANT)
 
 # Volume names (v2 volumes for better performance)
@@ -229,7 +229,7 @@ def health():
     timeout=3600,
     memory=32768,  # 32GB
     max_containers=5,  # Allow auto-scaling
-    scaledown_window=300,  # Keep warm 5 min
+    scaledown_window=60,  # Keep warm 1 min
     enable_memory_snapshot=True,  # 🔥 Fast cold starts
 )
 @modal.concurrent(max_inputs=10)

@@ -19,6 +19,7 @@ class GPUVariant(Enum):
     RTX_4090 = "rtx4090"
     RTX_5090 = "rtx5090"
     A10G = "a10g"
+    L40S = "l40s"  # 48GB VRAM - great for large models
     A100 = "a100"
     H100 = "h100"
 
@@ -98,6 +99,18 @@ GPU_CONFIGS: dict[GPUVariant, GPUConfig] = {
         supports_fp8=True,
         supports_sage_attention=True,
         modal_gpu="A10G",
+        docker_base="",  # Uses Modal image builder
+    ),
+    GPUVariant.L40S: GPUConfig(
+        variant=GPUVariant.L40S,
+        cuda_version="12.4",
+        pytorch_version="2.4.0",
+        vram_gb=48,
+        compute_capability="8.9",  # Ada Lovelace
+        supports_fp8=True,
+        supports_sage_attention=True,
+        supports_flash_attention=True,
+        modal_gpu="L40S",
         docker_base="",  # Uses Modal image builder
     ),
     GPUVariant.A100: GPUConfig(
