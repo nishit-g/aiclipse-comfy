@@ -233,7 +233,7 @@ def health():
     enable_memory_snapshot=True,  # 🔥 Fast cold starts
 )
 @modal.concurrent(max_inputs=10)
-@modal.web_server(port=8188, startup_timeout=120)
+@modal.web_server(port=8188, startup_timeout=120, requires_proxy_auth=True)
 def serve():
     """
     Unified ComfyUI Server - Single endpoint for UI and API.

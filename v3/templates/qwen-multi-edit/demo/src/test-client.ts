@@ -1,16 +1,41 @@
 /**
  * Test @stable-canvas/comfyui-client with our deployed ComfyUI
  * 
- * Run: npx ts-node src/test-client.ts
+ * Run: npx tsx src/test-client.ts
  */
 
 import { Client } from "@stable-canvas/comfyui-client";
 import * as fs from "fs";
 import * as path from "path";
 import WebSocket from "ws";
+import * as dotenv from "dotenv";
+
+// Load environment variables from .env
+dotenv.config({ path: path.join(__dirname, "../../../.env") });
 
 // Our deployed ComfyUI server
 const API_HOST = "ybshiva--comfy-qwen-multi-edit-serve.modal.run";
+
+// Modal Proxy Auth headers
+const MODAL_KEY = process.env.MODAL_TOKEN_ID;
+const MODAL_SECRET = process.env.MODAL_TOKEN_SECRET;
+
+if (!MODAL_KEY || !MODAL_SECRET) {
+    console.error("❌ Missing MODAL_TOKEN_ID or MODAL_TOKEN_SECRET in .env");
+    process.exit(1);
+}
+
+// Custom fetch with auth headers
+const authFetch = (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    return fetch(url, {
+        ...init,
+        headers: {
+            ...init?.headers,
+            "Modal-Key": MODAL_KEY!,
+            "Modal-Secret": MODAL_SECRET!,
+        },
+    });
+};
 
 // Load workflow from file
 const workflowPath = path.join(__dirname, "../../workflows/test-2511-api.json");
@@ -22,14 +47,15 @@ async function main() {
     console.log("=".repeat(60));
     console.log(`Server: ${API_HOST}`);
     console.log(`Workflow: ${workflowPath}`);
+    console.log(`Auth: Modal Proxy Auth ✅`);
     console.log("");
 
-    // Create client
+    // Create client with auth
     const client = new Client({
         api_host: API_HOST,
         ssl: true,
         WebSocket: WebSocket as any,
-        fetch: fetch,
+        fetch: authFetch as typeof fetch,
     });
 
     try {

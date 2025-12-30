@@ -1,16 +1,41 @@
 /**
  * Run 2 prompts with different seeds and save results
  * 
- * Run: npx ts-node src/run-2-prompts.ts
+ * Run: npx tsx src/run-2-prompts.ts
  */
 
 import { Client } from "@stable-canvas/comfyui-client";
 import * as fs from "fs";
 import * as path from "path";
 import WebSocket from "ws";
+import * as dotenv from "dotenv";
+
+// Load environment variables from .env
+dotenv.config({ path: path.join(__dirname, "../../../.env") });
 
 const API_HOST = "ybshiva--comfy-qwen-multi-edit-serve.modal.run";
 const workflowPath = path.join(__dirname, "../../workflows/test-2511-api.json");
+
+// Modal Proxy Auth headers
+const MODAL_KEY = process.env.MODAL_TOKEN_ID;
+const MODAL_SECRET = process.env.MODAL_TOKEN_SECRET;
+
+if (!MODAL_KEY || !MODAL_SECRET) {
+    console.error("❌ Missing MODAL_TOKEN_ID or MODAL_TOKEN_SECRET in .env");
+    process.exit(1);
+}
+
+// Custom fetch with auth headers
+const authFetch = (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    return fetch(url, {
+        ...init,
+        headers: {
+            ...init?.headers,
+            "Modal-Key": MODAL_KEY!,
+            "Modal-Secret": MODAL_SECRET!,
+        },
+    });
+};
 
 async function runPrompt(client: Client, workflow: any, seed: number, name: string): Promise<string> {
     console.log(`\n🎲 Running "${name}" with seed: ${seed}`);
@@ -48,7 +73,7 @@ async function runPrompt(client: Client, workflow: any, seed: number, name: stri
             }
             console.log(`   📸 Downloading...`);
 
-            const response = await fetch(imageUrl);
+            const response = await authFetch(imageUrl);
             const buffer = Buffer.from(await response.arrayBuffer());
 
             const outputPath = path.join(__dirname, `../${name}.png`);
@@ -77,12 +102,12 @@ async function main() {
     const workflow = JSON.parse(fs.readFileSync(workflowPath, "utf-8"));
     console.log(`Workflow: ${path.basename(workflowPath)}`);
 
-    // Create client
+    // Create client with auth
     const client = new Client({
         api_host: API_HOST,
         ssl: true,
         WebSocket: WebSocket as any,
-        fetch: fetch,
+        fetch: authFetch as typeof fetch,
     });
 
     try {
