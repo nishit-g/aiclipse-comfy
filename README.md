@@ -36,6 +36,63 @@
 | **🎮 GPU Variants** | RTX 4090/5090, A10G, A100, H100 |
 | **🔄 Hot Reload** | Modal serve watches for changes |
 | **🔐 Secure Secrets** | Modal secrets for credentials |
+| **🪶 Lean Images** | ~5-8 GB vs 20-30+ GB traditional |
+
+---
+
+## 🪶 Why Lean Images?
+
+### Traditional Approach: 20-30+ GB Images
+```dockerfile
+# Manual PyTorch installation with version management
+RUN pip install torch==2.4.0+cu124 torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/cu124
+RUN pip install xformers==0.0.27
+RUN git clone ComfyUI && pip install -r requirements.txt
+# Result: You manage versions, conflicts, updates
+```
+
+### V3 Approach: ~5-8 GB Images
+```python
+# comfy-cli handles EVERYTHING automatically
+comfy_image = base_image.run_commands(
+    f"comfy --skip-prompt install --nvidia --cuda-version {GPU.cuda_version}",
+    gpu=GPU.modal_gpu,  # Needs GPU for CUDA detection
+)
+```
+
+**What `comfy install --nvidia` does automatically:**
+- ✅ Installs PyTorch with correct CUDA version
+- ✅ Installs ComfyUI and all dependencies
+- ✅ Sets up proper paths and configs
+- ✅ Handles version compatibility
+
+### Image Size Comparison
+
+| Component | Traditional | V3 (comfy-cli) |
+|-----------|-------------|----------------|
+| Base OS | Full Ubuntu (~5 GB) | debian-slim (~300 MB) |
+| CUDA toolkit | Full toolkit (~5 GB) | Runtime only (~1 GB) |
+| PyTorch | Manual install (~3 GB) | Auto-optimized (~2 GB) |
+| ComfyUI | Manual clone (~500 MB) | comfy-cli (~500 MB) |
+| Custom nodes | Baked in image | **Runtime install** |
+| pip cache | Often left in | Cleaned |
+| **Total** | **20-30+ GB** | **5-8 GB** |
+
+### Key Insight: Models Are NOT in the Image
+
+```
+Modal Volume (separate):     Modal Image:
+├── diffusion_models/        ├── debian-slim
+│   └── qwen_edit (38 GB)    ├── Python 3.12
+├── text_encoders/           ├── comfy-cli
+│   └── qwen_2.5 (8.7 GB)    └── ComfyUI (via comfy install)
+├── loras/ (2+ GB)
+└── vae/ (242 MB)
+
+~50 GB of models             ~5-8 GB image
+(shared across templates)    (fast to build/deploy)
+```
 
 ---
 
