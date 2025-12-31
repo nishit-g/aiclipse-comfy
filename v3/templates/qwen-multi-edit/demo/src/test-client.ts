@@ -37,6 +37,19 @@ const authFetch = (url: string | URL | Request, init?: RequestInit): Promise<Res
     });
 };
 
+// Custom WebSocket class that passes auth headers during handshake
+// Modal's proxy auth requires these headers on ALL requests including WebSocket
+const AuthenticatedWebSocket = class extends WebSocket {
+    constructor(address: string | URL, protocols?: string | string[]) {
+        super(address, protocols, {
+            headers: {
+                "Modal-Key": MODAL_KEY!,
+                "Modal-Secret": MODAL_SECRET!,
+            },
+        });
+    }
+};
+
 // Load workflow from file
 const workflowPath = path.join(__dirname, "../../workflows/test-2511-api.json");
 const workflow = JSON.parse(fs.readFileSync(workflowPath, "utf-8"));
@@ -50,11 +63,11 @@ async function main() {
     console.log(`Auth: Modal Proxy Auth ✅`);
     console.log("");
 
-    // Create client with auth
+    // Create client with authenticated WebSocket
     const client = new Client({
         api_host: API_HOST,
         ssl: true,
-        WebSocket: WebSocket as any,
+        WebSocket: AuthenticatedWebSocket as any,
         fetch: authFetch as typeof fetch,
     });
 
